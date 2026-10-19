@@ -12,17 +12,18 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
-// Signals app chrome (inbox, alert titles, metric values) uses Lato Bold.
+// Signals app chrome (inbox, alert titles, metric values) uses Lato Bold;
+// the Slack previews in Handoff use Lato Regular for message text.
 const lato = Lato({
   variable: "--font-lato",
   subsets: ["latin"],
-  weight: ["700"],
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Signals Assistant · Root cause",
+  title: "Signals Assistant",
   description:
-    "Verdigris Signals Assistant prototype: AI root cause analysis for a UPS rectifier alert.",
+    "Verdigris Signals Assistant prototype: AI root cause analysis and shift handoff for a UPS rectifier alert.",
 };
 
 export const viewport: Viewport = {

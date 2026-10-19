@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { QUESTION } from "@/lib/data";
+import { HANDOFF, QUESTION } from "@/lib/data";
 import { EASE } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Icon } from "../ui";
@@ -10,13 +10,18 @@ import { Icon } from "../ui";
  * Clicking auto-types the scripted question; Enter or Send asks it. */
 export function Composer() {
   const { state, actions } = usePrototype();
-  const { chat, analysis } = state;
+  const { analysis } = state;
+  const handoff = state.tab === "handoff";
+  // The scripted question belongs to Root cause; on Handoff the composer rests.
+  const chat = handoff ? "idle" : state.chat;
   const disabled = analysis !== "done";
   const typing = chat === "typing" || chat === "ready";
   const searching = chat === "searching" || chat === "answering";
   const canSend = typing && state.typed > 0;
 
-  const placeholder = disabled
+  const placeholder = handoff
+    ? HANDOFF.placeholder
+    : disabled
     ? "You can ask questions once the analysis finishes"
     : searching
       ? "Searching…"
@@ -112,6 +117,7 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
 }
 
 export function ComposerFooter() {
+  const { state } = usePrototype();
   return (
     <div
       className="flex w-[575px] shrink-0 flex-col gap-3 rounded-[14px] p-4"
@@ -128,7 +134,9 @@ export function ComposerFooter() {
           <AttachPill icon="/figma/drawer/camera.svg" label="Image" />
           <AttachPill icon="/figma/drawer/paperclip.svg" label="Document" />
         </div>
-        <p className="flex-1 text-right text-[12px] leading-4 text-muted-foreground">AI-generated analysis. Verify before acting on critical loads.</p>
+        <p className="flex-1 text-right text-[12px] leading-4 text-muted-foreground">
+          {state.tab === "handoff" ? HANDOFF.disclaimer : "AI-generated analysis. Verify before acting on critical loads."}
+        </p>
       </div>
     </div>
   );

@@ -226,6 +226,19 @@ body {
   }
 }
 
+/* Assistant tabs: the panel that becomes visible settles in.
+ * (A CSS animation restarts whenever [hidden] is lifted.) */
+.tab-panel:not([hidden]) {
+  animation: tab-in 240ms var(--ease-reveal);
+}
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(3px);
+  }
+}
+
 .caret {
   animation: caret 1s steps(1) infinite;
 }
@@ -240,7 +253,8 @@ body {
   .ring-sweep-quiet,
   .stop-sweep,
   .spin,
-  .shimmer {
+  .shimmer,
+  .tab-panel:not([hidden]) {
     animation: none;
   }
   .vg-collapse {

@@ -3,13 +3,20 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { DUR, EASE, TIMING } from "@/lib/motion";
-import { usePrototype, type Toast as ToastT } from "@/lib/store";
+import { usePrototype, type Tab, type Toast as ToastT } from "@/lib/store";
 import { Icon } from "../ui";
 import { ComposerFooter } from "./Composer";
 import { Conversation } from "./Conversation";
+import { HandoffPanel } from "./HandoffPanel";
 import { RcaPanel } from "./RcaPanel";
 
-const TABS = ["Root cause", "Related issues", "Log", "Handoff"];
+/* Root cause and Handoff are live; Related issues and Log stay inert. */
+const TABS: { label: string; tab?: Tab }[] = [
+  { label: "Root cause", tab: "rca" },
+  { label: "Related issues" },
+  { label: "Log" },
+  { label: "Handoff", tab: "handoff" },
+];
 
 /* Assistant drawer: non-modal, 600px, slides over the alert page. */
 export function AssistantDrawer() {
@@ -29,6 +36,11 @@ export function AssistantDrawer() {
     return () => cancelAnimationFrame(id);
   }, [state.chat]);
 
+  // Each tab starts at the top.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [state.tab]);
+
   return (
     <motion.aside
       aria-label="Signals Assistant"
@@ -40,7 +52,7 @@ export function AssistantDrawer() {
       className="absolute right-0 top-0 z-20 flex h-full w-[600px] flex-col items-center border-l border-border bg-background pb-3 shadow-drawer"
     >
       <header className="flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
-        <h2 className="flex-1 text-[16px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
+        <h2 className="flex-1 text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
         <motion.button
           type="button"
           onClick={actions.closeDrawer}
@@ -53,18 +65,44 @@ export function AssistantDrawer() {
       </header>
 
       <nav className="flex h-12 w-full shrink-0 items-end gap-6 border-b border-border px-6" aria-label="Assistant sections">
-        {TABS.map((t, i) => (
-          <span key={t} className="flex flex-col" aria-current={i === 0 ? "page" : undefined}>
-            <span className={`py-3 text-[14px] font-medium leading-5 ${i === 0 ? "text-foreground" : "text-muted-foreground"}`}>{t}</span>
-            <span className={`h-0.5 w-full rounded-t-[2px] ${i === 0 ? "bg-verdigris-on-light" : "bg-transparent"}`} />
-          </span>
-        ))}
+        {TABS.map(({ label, tab }) => {
+          const active = tab === state.tab;
+          const body = (
+            <>
+              <span
+                className={`py-3 text-[14px] font-medium leading-5 transition-colors duration-150 ${
+                  active ? "text-foreground" : tab ? "text-muted-foreground group-hover:text-foreground-secondary" : "text-muted-foreground"
+                }`}
+              >
+                {label}
+              </span>
+              <span
+                className={`h-0.5 w-full origin-center rounded-t-[2px] bg-verdigris-on-light transition-[opacity,transform] duration-200 ease-[var(--ease-reveal)] ${
+                  active ? "scale-x-100 opacity-100" : "scale-x-50 opacity-0"
+                }`}
+              />
+            </>
+          );
+          return tab ? (
+            <button key={label} type="button" onClick={() => actions.setTab(tab)} aria-current={active ? "page" : undefined} className="group flex flex-col">
+              {body}
+            </button>
+          ) : (
+            <span key={label} className="flex flex-col">
+              {body}
+            </span>
+          );
+        })}
       </nav>
 
       <div ref={scrollRef} className="scroll-quiet relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="relative flex flex-col px-6 pb-8 pt-6">
+        {/* Both panels stay mounted so switching tabs never replays the analysis. */}
+        <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "rca"}>
           <RcaPanel />
           <Conversation bubbleRef={bubbleRef} />
+        </div>
+        <div className="tab-panel relative flex flex-col px-6 pb-20 pt-6" hidden={state.tab !== "handoff"}>
+          <HandoffPanel />
         </div>
       </div>
 
@@ -127,7 +165,7 @@ export function AssistantMinimized() {
           style={{ transformOrigin: "right bottom" }}
           className="absolute bottom-10 right-5 z-20 flex items-center gap-4 rounded-[12px] border border-border bg-white py-3 pl-4 pr-3 shadow-[0_1px_1.5px_rgba(0,0,0,0.06),0_8px_12px_rgba(0,0,0,0.12)]"
         >
-          <span className="text-[14px] font-semibold leading-5 text-foreground">Signals Assistant</span>
+          <span className="text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</span>
           <motion.button
             type="button"
             onClick={actions.backToRootCause}

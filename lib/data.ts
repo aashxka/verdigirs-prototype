@@ -224,3 +224,120 @@ export function riskFor(odds: number): Confidence {
   if (odds >= 30) return "Medium";
   return "Low";
 }
+
+/* ─────────────────────────────────────────────────────────
+ * Handoff (04 · Handoff, 09.1–09.3). Facts follow the 09.2
+ * draft. Each person gets their own channels, and each
+ * message is written for that reader: steps and timestamps
+ * for the next tech, outcome and next step for leadership.
+ * ───────────────────────────────────────────────────────── */
+export type ChannelKey = "servicenow" | "slack" | "sms";
+export type PersonKey = "tech" | "lead";
+
+export type HandoffMessage =
+  | { kind: "ticket"; title: string; fields: { label: string; value: string | { time: string; text: string }[] }[] }
+  | { kind: "slack"; title: string; sections: { label: string; text: string }[]; link?: string }
+  | { kind: "sms"; text: string };
+
+export type Channel = { key: ChannelKey; label: string; to: string; message: HandoffMessage };
+export type Recipient = { key: PersonKey; audience: string; name: string; channels: Channel[] };
+
+export const HANDOFF = {
+  intro: "Pick who it’s for and where to send it. Each message is written from the Log for its reader.",
+  source: "From 6 Log entries, 12:24–14:12",
+  sentAt: "14:25",
+  disclaimer: "AI-drafted from the Log. Review before you send.",
+  placeholder: "Ask about this handoff…",
+};
+
+export const RECIPIENTS: Recipient[] = [
+  {
+    key: "tech",
+    audience: "Next shift tech",
+    name: "Ana Ruiz",
+    channels: [
+      {
+        key: "servicenow",
+        label: "ServiceNow",
+        to: "T-2214 work notes",
+        message: {
+          kind: "ticket",
+          title: "Shift handoff: PDU-01-A9F harmonic alert",
+          fields: [
+            { label: "Status", value: "Resolved. Watching PDU-02." },
+            { label: "Root cause", value: "Rack 14’s 12 new servers pushed Phase A THDi to 180% at 12:24." },
+            {
+              label: "Actions",
+              value: [
+                { time: "12:40", text: "Opened T-2214 to inspect rack 14" },
+                { time: "13:02", text: "Escalated to Jordan Lee" },
+                { time: "13:58", text: "Moved rack 14 to PDU-02 · WO-1182" },
+                { time: "14:10", text: "Sensor confirmed THDi at 4.2%" },
+              ],
+            },
+            { label: "Still open", value: "UPS-2 rectifier inspection, Tue 09:00" },
+            { label: "Watch", value: "PDU-02 load, now 70%" },
+          ],
+        },
+      },
+      {
+        key: "slack",
+        label: "Slack",
+        to: "#sjc-night-shift",
+        message: {
+          kind: "slack",
+          title: "Handoff: PDU-01-A9F harmonic alert (resolved)",
+          sections: [
+            { label: "What happened:", text: "Phase A THDi hit 180% at 12:24 after rack 14’s 12 new servers came online." },
+            {
+              label: "What I did:",
+              text: "Created task T-2214 to inspect rack 14 (12:40). Escalated to Jordan Lee (13:02). Moved rack 14 to PDU-02, WO-1182 (13:58). Sensor confirmed 4.2% at 14:10.",
+            },
+            { label: "Still open:", text: "UPS-2 rectifier inspection, Tue 09:00." },
+            { label: "Watch:", text: "PDU-02 load, now 70%." },
+          ],
+          link: "See full analysis",
+        },
+      },
+      {
+        key: "sms",
+        label: "SMS",
+        to: "Ana Ruiz",
+        message: {
+          kind: "sms",
+          text: "SJC handoff: PDU-01-A9F alert resolved. Rack 14 moved to PDU-02 (WO-1182), THDi now 4.2%. Still open: UPS-2 inspection Tue 09:00. Details: sig.nl/a/8F2",
+        },
+      },
+    ],
+  },
+  {
+    key: "lead",
+    audience: "Leadership",
+    name: "Jordan Lee",
+    channels: [
+      {
+        key: "slack",
+        label: "Slack",
+        to: "Jordan Lee",
+        message: {
+          kind: "slack",
+          title: "SJC: PDU-01-A9F alert is resolved",
+          sections: [
+            { label: "What happened:", text: "New servers on rack 14 overloaded Phase A at 12:24." },
+            { label: "Fix:", text: "The team moved rack 14 to PDU-02. Readings were back under the limit by 14:10." },
+            { label: "Next:", text: "UPS-2 rectifier inspection, Tue 09:00." },
+          ],
+        },
+      },
+      {
+        key: "sms",
+        label: "SMS",
+        to: "Jordan Lee",
+        message: {
+          kind: "sms",
+          text: "SJC update: PDU-01-A9F alert resolved at 14:10. Cause: rack 14’s new servers. Load moved to PDU-02, now at 70%. Next: UPS-2 inspection Tue 09:00. sig.nl/a/8F2",
+        },
+      },
+    ],
+  },
+];

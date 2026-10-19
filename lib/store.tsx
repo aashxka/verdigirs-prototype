@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef } from "react";
-import { CAUSES, CONFIRMED_STEPS, QUESTION, SEARCH_STEPS, TRACE_STEPS, TRIAGE_STEPS } from "./data";
+import { CAUSES, CONFIRMED_STEPS, QUESTION, RECIPIENTS, SEARCH_STEPS, TRACE_STEPS, TRIAGE_STEPS, type ChannelKey, type PersonKey } from "./data";
 import { TIMING } from "./motion";
 
 /* ─────────────────────────────────────────────────────────
@@ -14,10 +14,15 @@ export type StepStatus = "idle" | "working" | "done";
 export type Undo = { kind: "confirm" } | { kind: "step"; key: string };
 export type Toast = { id: number; text: string; undo?: Undo };
 export type ChatPhase = "idle" | "typing" | "ready" | "searching" | "answering" | "done";
+export type Tab = "rca" | "handoff";
+export type HandoffPhase = "pick" | "writing" | "ready" | "sending" | "sent";
+/* null = person not picked; [] = picked, no channel yet. */
+export type Picks = Record<PersonKey, ChannelKey[] | null>;
 
 export type State = {
   view: "alert" | "signals";
   drawer: "closed" | "open" | "minimized";
+  tab: Tab;
   investigating: boolean;
   analysis: "idle" | "running" | "done";
   traceDone: number;
@@ -37,11 +42,15 @@ export type State = {
   answerShown: number;
   asked: boolean;
   whatIf: { rack: number; ups: number };
+  picks: Picks;
+  handoff: HandoffPhase;
+  written: number;
 };
 
 const initial: State = {
   view: "alert",
   drawer: "closed",
+  tab: "rca",
   investigating: false,
   analysis: "idle",
   traceDone: 0,
@@ -61,7 +70,17 @@ const initial: State = {
   answerShown: 0,
   asked: false,
   whatIf: { rack: 0, ups: 0 },
+  picks: { tech: null, lead: null },
+  handoff: "pick",
+  written: 0,
 };
+
+/* Messages to write, in the order they appear: person, then channel. */
+export function pickedMessages(picks: Picks) {
+  return RECIPIENTS.flatMap((r) =>
+    r.channels.filter((c) => picks[r.key]?.includes(c.key)).map((c) => ({ recipient: r, channel: c })),
+  );
+}
 
 type Action =
   | { type: "reset" }
@@ -221,11 +240,48 @@ function useController() {
         patch({ view: "signals", drawer: "minimized" });
       },
       backToRootCause() {
-        patch({ view: "alert", drawer: "open" });
+        patch({ view: "alert", drawer: "open", tab: "rca" });
+      },
+      setTab(tab: Tab) {
+        if (ref.current.tab !== tab) patch({ tab });
+      },
+      togglePerson(key: PersonKey) {
+        const s = ref.current;
+        if (s.handoff !== "pick" && s.handoff !== "ready") return;
+        const on = s.picks[key] !== null;
+        patch({ picks: { ...s.picks, [key]: on ? null : [] }, handoff: "pick", written: 0 });
+      },
+      toggleChannel(key: PersonKey, channel: ChannelKey) {
+        const s = ref.current;
+        const list = s.picks[key];
+        if (!list || (s.handoff !== "pick" && s.handoff !== "ready")) return;
+        const next = list.includes(channel) ? list.filter((c) => c !== channel) : [...list, channel];
+        patch({ picks: { ...s.picks, [key]: next }, handoff: "pick", written: 0 });
+      },
+      generate() {
+        const s = ref.current;
+        const n = pickedMessages(s.picks).length;
+        if (s.handoff !== "pick" || n === 0) return;
+        clear("handoff");
+        patch({ handoff: "writing", written: 0 });
+        for (let i = 0; i < n; i++) {
+          after("handoff", TIMING.writeStart + i * TIMING.writeStagger, () => patch({ written: i + 1 }));
+        }
+        after("handoff", TIMING.writeStart + (n - 1) * TIMING.writeStagger + TIMING.writeSettle, () => patch({ handoff: "ready" }));
+      },
+      sendHandoff() {
+        const s = ref.current;
+        if (s.handoff !== "ready") return;
+        patch({ handoff: "sending" });
+        const names = RECIPIENTS.filter((r) => s.picks[r.key]?.length).map((r) => r.name);
+        after("handoff", TIMING.actionSpinner + 180, () => {
+          patch({ handoff: "sent" });
+          after("handoff", 180, () => toast(`Handoff sent to ${names.join(" and ")}. Added to the Log.`));
+        });
       },
       focusComposer() {
         const s = ref.current;
-        if (s.analysis !== "done" || s.chat !== "idle" || s.asked) return;
+        if (s.tab !== "rca" || s.analysis !== "done" || s.chat !== "idle" || s.asked) return;
         patch({ chat: "typing", typed: 0 });
         clear("chat");
         let at = 140;
@@ -238,6 +294,7 @@ function useController() {
       },
       send() {
         const s = ref.current;
+        if (s.tab !== "rca") return;
         if (s.chat !== "ready" && s.chat !== "typing") return;
         clear("chat");
         patch({ chat: "searching", typed: QUESTION.length, asked: true, searchDone: 0, searchFolded: false, answerShown: 0 });

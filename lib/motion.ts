@@ -27,6 +27,13 @@
  *   300   search steps tick off (Verdigris spinner while active)
  *  3200   steps fold into one summary line
  *  3400   answer streams in block by block (staggered 180ms)
+ *
+ * HANDOFF (ms after Generate)
+ *     0   message cards land with skeleton bodies, button spins
+ *   600   first message resolves out of its skeleton
+ *  +650   each next message, in order (person, then channel)
+ *  +450   Generate turns into Send
+ *  Send → 700 spinner → cards flip to "Sent", toast rises
  * ───────────────────────────────────────────────────────── */
 
 export const EASE = {
@@ -66,6 +73,9 @@ export const TIMING = {
   searchFolds: 3150,
   answerStarts: 3350,
   answerStagger: 180,
+  writeStart: 600, // first handoff message resolves (after Generate)
+  writeStagger: 650,
+  writeSettle: 450, // last message done → Send appears
 };
 
 /* Springs */
