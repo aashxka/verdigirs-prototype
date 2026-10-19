@@ -26,95 +26,100 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
         <p className="rounded-[14px] rounded-br-[4px] bg-secondary px-3.5 py-2.5 text-[14px] leading-5 text-foreground">{QUESTION}</p>
       </motion.div>
 
-      <div className="flex w-full flex-col gap-4" aria-live="polite">
-        <SearchStatus />
+      <div className="flex w-full flex-col gap-8" aria-live="polite">
+        <div className="flex flex-col gap-4">
+          <SearchStatus />
+          <AnimatePresence>
+            {shown >= 1 && (
+              <Block key="lead">
+                <div className="flex flex-col gap-1">
+                  <StreamText as="h4" className={HEADING} text={ANSWER.leadTitle} />
+                  <StreamText className="text-pretty text-[14px] leading-5 text-foreground-secondary" text={ANSWER.leadBody} delay={0.12} />
+                </div>
+              </Block>
+            )}
+          </AnimatePresence>
+        </div>
         <AnimatePresence>
-          {shown >= 1 && (
-            <Block key="lead">
-              <div className="flex flex-col gap-1 text-[14px] leading-5">
-                <StreamText className="font-semibold text-foreground" text={ANSWER.leadTitle} />
-                <StreamText className="text-foreground-secondary" text={ANSWER.leadBody} delay={0.12} />
-              </div>
-            </Block>
-          )}
           {shown >= 2 && (
             <Block key="related">
-              <div className="flex flex-col gap-2.5">
-                <h4 className="text-[14px] font-semibold leading-5 text-foreground">{ANSWER.relatedTitle}</h4>
-                <div className="overflow-hidden rounded-lg border border-border bg-card">
-                  <div className="flex gap-3 border-b border-border bg-surface-subtle px-3 py-2 text-[12px] font-medium leading-4 text-muted-foreground">
-                    <span className="w-[180px] shrink-0">Cause</span>
-                    <span className="min-w-0 flex-1">Link to #2</span>
-                    <span className="w-[145px] shrink-0">Source</span>
-                  </div>
+              <Section title={ANSWER.relatedTitle}>
+                <div className="overflow-hidden rounded-lg border border-border bg-background">
                   {ANSWER.related.map((r, i) => (
-                    <div key={r.rank} className={`flex gap-3 p-3 ${i === 0 ? "border-b border-border" : ""}`}>
-                      <span className="flex w-[180px] shrink-0 gap-2">
-                        <Rank n={r.rank} />
-                        <span className="text-[14px] font-medium leading-5 text-foreground">{r.cause}</span>
+                    <div key={r.rank} className={`flex items-start gap-3 p-4 ${i < ANSWER.related.length - 1 ? "border-b border-border" : ""}`}>
+                      <Rank n={r.rank} />
+                      <span className="flex min-w-0 flex-1 flex-col gap-2">
+                        <span className="flex flex-col gap-1 text-[14px] leading-5">
+                          <span className="font-medium text-foreground">{r.cause}</span>
+                          <span className="text-muted-foreground">{r.note}</span>
+                        </span>
+                        <span className="flex">
+                          <SourceChip source={{ label: r.source, type: "sensor" }} />
+                        </span>
                       </span>
-                      <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
-                        <Badge tone={r.linked ? "teal" : "neutral"}>{r.linked ? "Linked" : "Not linked"}</Badge>
-                        <span className="text-[12px] leading-4 text-muted-foreground">{r.note}</span>
-                      </span>
-                      <span className="flex w-[145px] shrink-0 items-start">
-                        <SourceChip source={{ label: r.source, type: "sensor" }} />
-                      </span>
+                      <Badge tone={r.linked ? "teal" : "muted"}>{r.linked ? "Linked" : "Not linked"}</Badge>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Section>
             </Block>
           )}
           {shown >= 3 && (
             <Block key="past">
-              <div className="flex flex-col gap-2.5">
-                <h4 className="text-[14px] font-semibold leading-5 text-foreground">{ANSWER.pastTitle}</h4>
-                <div className="overflow-hidden rounded-lg border border-border bg-card">
-                  <div className="flex gap-3 border-b border-border bg-surface-subtle px-3 py-2 text-[12px] font-medium leading-4 text-muted-foreground">
-                    <span className="min-w-0 flex-1">Signal</span>
-                    <span className="w-[140px] shrink-0">Today</span>
-                    <span className="w-[140px] shrink-0">Mar 14</span>
+              <Section title={ANSWER.pastTitle}>
+                <div className="overflow-hidden rounded-lg border border-border bg-background">
+                  <div className={`${MATCH_ROW} border-b border-border bg-surface-subtle py-2 text-[12px] font-medium leading-4 text-muted-foreground`}>
+                    <span>Signal</span>
+                    <span>Today</span>
+                    <span>Mar 14</span>
                   </div>
-                  {ANSWER.match.map((m, i) => (
-                    <div key={m.signal} className={`flex gap-3 px-3 py-2.5 text-[14px] leading-5 ${i < ANSWER.match.length - 1 ? "border-b border-border" : ""}`}>
-                      <span className="min-w-0 flex-1 text-foreground-secondary">{m.signal}</span>
-                      <span className="w-[140px] shrink-0 text-foreground">{m.today}</span>
-                      <span className="w-[140px] shrink-0 text-foreground">{m.past}</span>
+                  {ANSWER.match.map((m) => (
+                    <div key={m.signal} className={`${MATCH_ROW} border-b border-border py-2.5 text-[14px] leading-5 text-foreground`}>
+                      <span className="text-foreground-secondary">{m.signal}</span>
+                      <span className="tabular">{m.today}</span>
+                      <span className="tabular">{m.past}</span>
                     </div>
                   ))}
-                </div>
-                <div className="flex gap-3 rounded-lg border border-border bg-background p-4">
-                  <span className="flex min-w-0 flex-1 flex-col gap-3">
-                    <span className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <Icon src="/figma/drawer/history.svg" size={16} />
+                    <span className="flex min-w-0 flex-1 flex-col gap-1">
                       <span className="text-[14px] font-medium leading-5 text-foreground">{ANSWER.pastIssue.title}</span>
-                      <span className="font-mono text-[12px] leading-4 text-muted-foreground">{ANSWER.pastIssue.meta}</span>
+                      <span className="font-mono text-[12px] leading-4 text-foreground-tertiary">{ANSWER.pastIssue.meta}</span>
                     </span>
-                    <span className="flex items-start justify-between">
-                      <span className="flex gap-2">
-                        {ANSWER.pastIssue.tags.map((t) => (
-                          <Badge key={t}>{t}</Badge>
-                        ))}
-                      </span>
-                      <span className="inline-flex h-5 items-center gap-1 rounded-[6px] bg-accent-muted pl-1.5 pr-2 text-[12px] font-medium leading-4 text-verdigris-on-light">
-                        <Icon src="/figma/chat/resolved-dot.svg" size={6} />
-                        {ANSWER.pastIssue.status}
-                      </span>
+                    <span className="inline-flex h-5 items-center gap-1 rounded-[6px] bg-accent-muted pl-1.5 pr-2 text-[12px] font-medium leading-4 text-verdigris-on-light">
+                      <Icon src="/figma/chat/resolved-dot.svg" size={6} />
+                      {ANSWER.pastIssue.status}
                     </span>
-                  </span>
-                  <Icon src="/figma/chat/chevron-right.svg" size={16} />
+                    <Icon src="/figma/chat/chevron-right.svg" size={16} />
+                  </div>
                 </div>
-              </div>
+              </Section>
             </Block>
           )}
           {shown >= 4 && (
             <Block key="whatif">
-              <WhatIf />
+              <Section title={ANSWER.whatIfTitle}>
+                <WhatIf />
+              </Section>
             </Block>
           )}
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+/* Answer type: 20 headings over 14 body. Sections sit 32 apart
+ * with 12 between heading and content, like the RCA panel. */
+const HEADING = "text-balance text-[20px] font-semibold leading-7 text-foreground";
+const MATCH_ROW = "grid grid-cols-[minmax(0,1fr)_140px_140px] gap-3 px-4";
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h4 className={HEADING}>{title}</h4>
+      {children}
+    </section>
   );
 }
 
@@ -127,10 +132,10 @@ function Block({ children }: { children: React.ReactNode }) {
 }
 
 /* Words resolve in sequence, like a streamed reply. */
-function StreamText({ text, className, delay = 0 }: { text: string; className?: string; delay?: number }) {
+function StreamText({ text, className, delay = 0, as: Tag = "p" }: { text: string; className?: string; delay?: number; as?: "p" | "h4" }) {
   const words = text.split(" ");
   return (
-    <p className={className} aria-label={text}>
+    <Tag className={className} aria-label={text}>
       {words.map((w, i) => (
         <motion.span
           key={i}
@@ -143,7 +148,7 @@ function StreamText({ text, className, delay = 0 }: { text: string; className?: 
           {i < words.length - 1 ? " " : ""}
         </motion.span>
       ))}
-    </p>
+    </Tag>
   );
 }
 

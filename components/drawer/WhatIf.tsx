@@ -34,8 +34,7 @@ export function WhatIf() {
 
   return (
     <section className="flex w-full flex-col items-center overflow-hidden rounded-lg border border-border bg-card p-2" aria-label="What-if: lower the odds of a UPS-2 failure">
-      <div className="flex w-full flex-col gap-3 px-6 pb-2 pt-6">
-        <h4 className="text-[14px] font-semibold leading-5 text-foreground">Failure odds · next 6 h</h4>
+      <div className="flex w-full flex-col px-6 pb-2 pt-6">
         <div className="flex w-full items-stretch gap-2">
           <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md bg-surface-subtle p-3">
             <span className="text-[12px] font-medium leading-4 text-muted-foreground">Now</span>

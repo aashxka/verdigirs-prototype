@@ -167,25 +167,25 @@ export const SEARCH_STEPS = [
 export const SEARCH_SUMMARY = "Checked 14 past incidents and the UPS-2 waveform";
 
 export const ANSWER = {
-  leadTitle: "It doesn’t explain the 12:24 spike.",
-  leadBody: "Rack 14 powering on does (cause #1). UPS-2 ripple is 6%; failures start at 15%.",
-  relatedTitle: "Cause #1 is making it worse",
+  leadTitle: "Capacitor wear doesn’t explain the 12:24 spike",
+  leadBody: "Rack 14 powering on does (cause #1). UPS-2 ripple is only 6%; failures start at 15%.",
+  relatedTitle: "Cause #1 is speeding up the wear",
   related: [
     { rank: 1, cause: "Non-linear load switching", linked: true, note: "Its harmonics heat UPS-2’s capacitors.", source: "PDU-01-A9F sensor" },
     { rank: 3, cause: "Phase A load imbalance", linked: false, note: "Started 3 days before the spike.", source: "Panel B sensor" },
   ],
-  pastTitle: "Today matches Mar 14, which ended in failure",
+  pastTitle: "Today matches Mar 14, when UPS-2 failed",
   match: [
     { signal: "Trigger", today: "Rack 14 power-on", past: "Rack 9 power-on" },
     { signal: "Phase A THDi", today: "180%", past: "165%" },
-    { signal: "UPS-2 ripple, 1 h in", today: "6%", past: "6%" },
+    { signal: "UPS-2 ripple after 1 h", today: "6%", past: "6%" },
   ],
   pastIssue: {
     title: "UPS-2 capacitor bank failure",
-    meta: "MAR 14, 2026 · UPS-2 · #482",
-    tags: ["Same UPS", "Similar harmonics"],
+    meta: "Incident #482 · Mar 14, 2026",
     status: "Resolved",
   },
+  whatIfTitle: "Failure odds · next 6 h",
 };
 
 /* What-if simulator. Values per stop combination come from the
