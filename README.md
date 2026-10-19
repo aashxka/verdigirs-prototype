@@ -27,3 +27,5 @@ Open http://localhost:3000. Press **R** at any point to restart from the alert.
 6. Any time after the analysis: click the composer, the question auto-types,
    press Enter → search steps → answer → what-if simulator (drag or tap the stops)
 7. Source chip / View in Signals → sensor page with the Assistant minimized → Back to root cause
+8. **Log** tab: read-only timeline of the alert, newest first (scroll only). A handoff sent
+   from the Handoff tab is added on top.

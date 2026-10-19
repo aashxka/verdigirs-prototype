@@ -27,7 +27,7 @@ export type StepStatus = "idle" | "working" | "done";
 export type Undo = { kind: "confirm" } | { kind: "step"; key: string };
 export type Toast = { id: number; text: string; undo?: Undo };
 export type ChatPhase = "idle" | "typing" | "ready" | "searching" | "answering" | "done";
-export type Tab = "rca" | "related" | "handoff";
+export type Tab = "rca" | "related" | "log" | "handoff";
 export type HandoffPhase = "pick" | "writing" | "ready" | "sending" | "sent";
 /* null = person not picked; [] = picked, no channel yet. */
 export type Picks = Record<PersonKey, ChannelKey[] | null>;
@@ -65,6 +65,8 @@ export type State = {
   handoff: HandoffPhase;
   written: number;
   related: Related;
+  /* The Log plays its entrance once, the first time it opens. */
+  logSeen: boolean;
 };
 
 const initial: State = {
@@ -94,6 +96,7 @@ const initial: State = {
   handoff: "pick",
   written: 0,
   related: { sort: "relevance", filter: NO_FILTER, draft: NO_FILTER, menu: null, open: [] },
+  logSeen: false,
 };
 
 /* Messages to write, in the order they appear: person, then channel. */
@@ -265,7 +268,7 @@ function useController() {
       },
       setTab(tab: Tab) {
         const s = ref.current;
-        if (s.tab !== tab) patch({ tab, related: { ...s.related, menu: null } });
+        if (s.tab !== tab) patch({ tab, related: { ...s.related, menu: null }, logSeen: s.logSeen || tab === "log" });
       },
       /* Related issues: Date and Sort apply on pick; Filter edits a
        * draft that only lands on Apply. */

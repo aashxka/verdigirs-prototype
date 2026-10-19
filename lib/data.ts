@@ -470,3 +470,74 @@ export function formatIssueDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
+
+/* ─────────────────────────────────────────────────────────
+ * Log (03 · Log, 08.1). Read-only timeline of the alert,
+ * newest first. The entries are the 7 the 09.2 handoff draft
+ * lists, so the Log and the Handoff tell the same story
+ * (Handoff writes from 6 of them, 12:24–14:12). Layout and
+ * entry anatomy follow the DS "Log item" (1424:4491).
+ * ───────────────────────────────────────────────────────── */
+export type LogEntry = { id: string; time: string; title: string; body: string; who: string; ai?: boolean };
+
+export const LOG = {
+  intro: "Every action on this alert, by people and the Assistant.",
+  day: "Today",
+  order: "newest first",
+  placeholder: "Ask about what happened on this alert…",
+};
+
+export const LOG_ENTRIES: LogEntry[] = [
+  {
+    id: "confirmed",
+    time: "14:12",
+    title: "Root cause confirmed",
+    body: "Non-linear load switching from rack 14’s new servers.",
+    who: "You",
+  },
+  {
+    id: "verified",
+    time: "14:10",
+    title: "Fix verified",
+    body: "Phase A THDi is down to 4.2%, under the 5% limit. PDU-02 is at 70%.",
+    who: "Signals Assistant · sensor check",
+    ai: true,
+  },
+  {
+    id: "applied",
+    time: "13:58",
+    title: "Fix applied",
+    body: "Moved rack 14 to PDU-02 under WO-1182.",
+    who: "You",
+  },
+  {
+    id: "rerun",
+    time: "13:20",
+    title: "Analysis re-run",
+    body: "Widened the data window to 24 hours.",
+    who: "Signals Assistant",
+    ai: true,
+  },
+  {
+    id: "escalated",
+    time: "13:02",
+    title: "Alert escalated",
+    body: "Sent to Jordan Lee, facilities lead.",
+    who: "You",
+  },
+  {
+    id: "task",
+    time: "12:40",
+    title: "Task created",
+    body: "T-2214: inspect non-linear loads on rack 14.",
+    who: "Signals Assistant · approved by you",
+    ai: true,
+  },
+  {
+    id: "raised",
+    time: "12:24",
+    title: "Alert raised",
+    body: "Phase A THDi crossed the 5% limit on PDU-01-A9F.",
+    who: "Signals · automatic detection",
+  },
+];

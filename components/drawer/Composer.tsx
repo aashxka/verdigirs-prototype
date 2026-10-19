@@ -1,10 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { HANDOFF, QUESTION, RELATED } from "@/lib/data";
-import { EASE } from "@/lib/motion";
+import { HANDOFF, LOG, QUESTION, RELATED } from "@/lib/data";
+import { DUR, EASE } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
-import { Icon } from "../ui";
+import { Icon, SearchLoader } from "../ui";
 
 /* Chat composer (1363:9234): Disabled → Default → Typing → Searching.
  * Clicking auto-types the scripted question; Enter or Send asks it. */
@@ -23,11 +23,11 @@ export function Composer() {
       ? HANDOFF.placeholder
       : state.tab === "related"
         ? RELATED.placeholder
-        : disabled
+        : state.tab === "log"
+          ? LOG.placeholder
+          : disabled
           ? "You can ask questions once the analysis finishes"
-          : searching
-            ? "Searching…"
-            : "Ask about this alert or its causes…";
+          : "Ask about this alert or its causes…";
 
   return (
     <div
@@ -52,15 +52,25 @@ export function Composer() {
             : "cursor-text border-border bg-background shadow-xs hover:border-[#d4d4d8] focus-visible:border-verdigris-on-light"
       }`}
     >
-      <span className="relative flex h-5 min-w-0 flex-1 items-center overflow-hidden text-[14px] leading-5">
-        {typing ? (
-          <span className="truncate text-foreground">
-            {QUESTION.slice(0, state.typed)}
-            <span className="caret ml-px inline-block h-4 w-px translate-y-[3px] bg-foreground" aria-hidden />
-          </span>
-        ) : (
-          <span className={`truncate ${disabled ? "text-subtle-foreground" : "text-muted-foreground"}`}>{placeholder}</span>
-        )}
+      {/* Placeholder, typed question and search status share one cell and crossfade. */}
+      <span className="grid h-6 min-w-0 flex-1 items-center overflow-hidden text-[14px] leading-5">
+        <AnimatePresence initial={false}>
+          {typing ? (
+            <motion.span key="typing" {...swap} className="truncate text-foreground [grid-area:1/1]">
+              {QUESTION.slice(0, state.typed)}
+              <span className="caret ml-px inline-block h-4 w-px translate-y-[3px] bg-foreground" aria-hidden />
+            </motion.span>
+          ) : searching ? (
+            <motion.span key="searching" {...swap} className="flex items-center gap-2 text-muted-foreground [grid-area:1/1]">
+              <SearchLoader size={24} />
+              Searching…
+            </motion.span>
+          ) : (
+            <motion.span key="placeholder" {...swap} className={`truncate [grid-area:1/1] ${disabled ? "text-subtle-foreground" : "text-muted-foreground"}`}>
+              {placeholder}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </span>
       <SendButton mode={searching ? "stop" : canSend ? "send" : "idle"} onSend={actions.send} onStop={actions.stop} />
     </div>
@@ -70,6 +80,8 @@ export function Composer() {
 function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; onSend: () => void; onStop: () => void }) {
   const stop = mode === "stop";
   return (
+    /* No surface in any state: the icon alone carries it. Grey at rest,
+     * verdigris when there's a question to send or a search to stop. */
     <motion.button
       type="button"
       aria-label={stop ? "Stop" : "Send"}
@@ -79,18 +91,10 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
         if (stop) onStop();
         else if (mode === "send") onSend();
       }}
-      whileTap={mode === "idle" ? undefined : { scale: 0.94 }}
-      transition={{ duration: 0.15, ease: EASE.out }}
-      className="relative isolate flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[6px]"
+      whileTap={mode === "idle" ? undefined : { scale: 0.9 }}
+      transition={{ duration: DUR.press, ease: EASE.out }}
+      className="relative flex size-8 shrink-0 items-center justify-center rounded-[6px] transition-opacity duration-150 enabled:hover:opacity-75"
     >
-      {/* Searching: quiet conic ring around a patina-ink surface */}
-      <span className={`ring-sweep-quiet absolute inset-0 -z-20 transition-opacity duration-200 ${stop ? "opacity-100" : "opacity-0"}`} aria-hidden />
-      <span
-        className={`absolute -z-10 rounded-[5px] transition-[inset,background-color] duration-[250ms] ease-[var(--ease-snap)] ${
-          stop ? "inset-[1.5px] bg-patina-ink" : mode === "send" ? "inset-0 bg-verdigris-on-light" : "inset-0 bg-transparent"
-        }`}
-        aria-hidden
-      />
       <AnimatePresence initial={false} mode="popLayout">
         {stop ? (
           <motion.span
@@ -99,7 +103,7 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
             animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
             exit={{ scale: 0.4, opacity: 0, transition: { duration: 0.15 } }}
             transition={{ duration: 0.25, ease: EASE.snap }}
-            className="stop-sweep block size-2.5 rounded-[2.5px]"
+            className="block size-2.5 rounded-[2.5px] bg-verdigris-on-light"
           />
         ) : (
           <motion.span
@@ -110,7 +114,7 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
             transition={{ duration: 0.22, ease: EASE.snap }}
             className="flex"
           >
-            <Icon src={mode === "send" ? "/figma/drawer/send-white.svg" : "/figma/drawer/send.svg"} size={16} />
+            <Icon src={mode === "send" ? "/figma/drawer/send-green.svg" : "/figma/drawer/send.svg"} size={16} />
           </motion.span>
         )}
       </AnimatePresence>
@@ -118,17 +122,21 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
   );
 }
 
+/* Composer text states crossfade in place (snap curve, like the field). */
+const swap = {
+  initial: { opacity: 0, filter: "blur(2px)" },
+  animate: { opacity: 1, filter: "blur(0px)", transition: { duration: 0.22, ease: EASE.snap } },
+  exit: { opacity: 0, filter: "blur(2px)", transition: { duration: 0.12, ease: EASE.standard } },
+};
+
 export function ComposerFooter() {
   const { state } = usePrototype();
   return (
-    /* Full-width dock: rounded top, square bottom, no stroke, a soft
-     * shadow along the top edge only. */
+    /* Full-width dock: plain white, rounded top, square bottom, no
+     * stroke, a soft shadow along the top edge only. */
     <div
-      className="flex w-full shrink-0 flex-col gap-3 rounded-t-[14px] p-4"
-      style={{
-        background: "radial-gradient(200px 180px at 0 0, rgba(236,251,250,0.9), rgba(236,251,250,0)), #fff",
-        boxShadow: "0 -1px 2px rgba(0,0,0,0.04), 0 -10px 24px -12px rgba(0,8,20,0.12)",
-      }}
+      className="flex w-full shrink-0 flex-col gap-3 rounded-t-[14px] bg-background p-4"
+      style={{ boxShadow: "0 -1px 2px rgba(0,0,0,0.04), 0 -10px 24px -12px rgba(0,8,20,0.12)" }}
     >
       <Composer />
       <div className="flex items-center gap-3">

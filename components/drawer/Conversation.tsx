@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ANSWER, QUESTION, SEARCH_STEPS, SEARCH_SUMMARY } from "@/lib/data";
 import { DUR, EASE, resolveIn } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
-import { Badge, Icon, Rank, SourceChip, Spinner } from "../ui";
+import { Badge, Icon, Rank, SearchLoader, SourceChip } from "../ui";
 import { WhatIf } from "./WhatIf";
 
 /* Follow-up exchange (05 · Ask a follow-up, 10.3 → 10.6).
@@ -186,7 +186,7 @@ function SearchStatus() {
                     {status === "done" ? (
                       <Icon src="/figma/cause/circle-check.svg" size={16} />
                     ) : status === "active" ? (
-                      <Spinner size={16} />
+                      <SearchLoader size={20} />
                     ) : (
                       <Icon src="/figma/cause/circle.svg" size={16} />
                     )}

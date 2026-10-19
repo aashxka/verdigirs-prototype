@@ -1,5 +1,6 @@
 "use client";
 
+import { InlineLoader } from "generative-loaders";
 import { AnimatePresence, motion } from "motion/react";
 import type { Confidence, Source } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
@@ -82,6 +83,13 @@ export function Spinner({ size = 16, light = false }: { size?: number; light?: b
       <path d="M14 8a6 6 0 0 0-6-6" stroke={light ? "#fafafa" : "#007571"} strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
+}
+
+/* Search activity: the generative-loaders matrix, its dots tinted along
+ * the Verdigris linear gradient (.vg-loader in globals.css). Decorative:
+ * the text beside it names what is happening. */
+export function SearchLoader({ size = 24 }: { size?: number }) {
+  return <InlineLoader variant="matrix" size={size} className="vg-loader" />;
 }
 
 /* Button / Small — 32px. Primary = main CTA, Secondary = row CTAs, Ghost = tertiary. */

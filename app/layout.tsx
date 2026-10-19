@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Lato } from "next/font/google";
+import "generative-loaders/styles.css";
 import "./globals.css";
 
 const inter = Inter({

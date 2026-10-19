@@ -8,14 +8,14 @@ import { Icon } from "../ui";
 import { ComposerFooter } from "./Composer";
 import { Conversation } from "./Conversation";
 import { HandoffPanel } from "./HandoffPanel";
+import { LogPanel } from "./LogPanel";
 import { RcaPanel } from "./RcaPanel";
 import { RelatedPanel } from "./RelatedPanel";
 
-/* Root cause, Related issues and Handoff are live; Log stays inert. */
-const TABS: { label: string; tab?: Tab }[] = [
+const TABS: { label: string; tab: Tab }[] = [
   { label: "Root cause", tab: "rca" },
   { label: "Related issues", tab: "related" },
-  { label: "Log" },
+  { label: "Log", tab: "log" },
   { label: "Handoff", tab: "handoff" },
 ];
 
@@ -68,11 +68,11 @@ export function AssistantDrawer() {
       <nav className="flex h-12 w-full shrink-0 items-end gap-6 border-b border-border px-6" aria-label="Assistant sections">
         {TABS.map(({ label, tab }) => {
           const active = tab === state.tab;
-          const body = (
-            <>
+          return (
+            <button key={label} type="button" onClick={() => actions.setTab(tab)} aria-current={active ? "page" : undefined} className="group flex flex-col">
               <span
                 className={`py-3 text-[14px] font-medium leading-5 transition-colors duration-150 ${
-                  active ? "text-foreground" : tab ? "text-muted-foreground group-hover:text-foreground-secondary" : "text-muted-foreground"
+                  active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground-secondary"
                 }`}
               >
                 {label}
@@ -82,16 +82,7 @@ export function AssistantDrawer() {
                   active ? "scale-x-100 opacity-100" : "scale-x-50 opacity-0"
                 }`}
               />
-            </>
-          );
-          return tab ? (
-            <button key={label} type="button" onClick={() => actions.setTab(tab)} aria-current={active ? "page" : undefined} className="group flex flex-col">
-              {body}
             </button>
-          ) : (
-            <span key={label} className="flex flex-col">
-              {body}
-            </span>
           );
         })}
       </nav>
@@ -104,6 +95,9 @@ export function AssistantDrawer() {
         </div>
         <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "related"}>
           <RelatedPanel />
+        </div>
+        <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "log"}>
+          {state.logSeen && <LogPanel />}
         </div>
         <div className="tab-panel relative flex flex-col px-6 pb-20 pt-6" hidden={state.tab !== "handoff"}>
           <HandoffPanel />

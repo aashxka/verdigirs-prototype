@@ -23,8 +23,9 @@
  *   950   toast rises from the footer, dismisses after 5s
  *
  * FOLLOW-UP QUESTION (ms after Send)
- *     0   question bubble lands, composer turns into a stop button
- *   300   search steps tick off (Verdigris spinner while active)
+ *     0   question bubble lands; composer reads "Searching…" beside
+ *         the matrix loader, Send turns into Stop
+ *   300   search steps tick off (matrix loader while active)
  *  3200   steps fold into one summary line
  *  3400   answer streams in block by block (staggered 180ms)
  *
@@ -34,6 +35,10 @@
  *     0   on a sort or filter change, kept rows slide to their new
  *         place (FLIP, 300ms) and new rows fade up (staggered 30ms)
  *     0   a row expands like a cause (300ms), body fades in at +60ms
+ *
+ * LOG (first open only)
+ *    60   entries settle in top to bottom (staggered 40ms, 360ms)
+ *  +100   each rail segment draws down to the next dot (400ms)
  *
  * HANDOFF (ms after Generate)
  *     0   message cards land with skeleton bodies, button spins

@@ -175,31 +175,35 @@ body {
   animation: sweep 1.6s linear infinite;
 }
 
-/* Quieter composer ring: dark edge with a teal → blue sheen */
-.ring-sweep-quiet {
-  background: conic-gradient(
-    from var(--sweep),
-    #2a4245 0%,
-    #2a4245 50%,
-    #155976 58%,
-    #0070a7 66%,
-    #009db8 80%,
-    #0fc8c3 90%,
-    #2a4245 100%
-  );
-  animation: sweep 1.6s linear infinite;
+/* Search loader (generative-loaders matrix). Each dot takes its colour
+ * from the Verdigris linear ring above, sampled in OKLab along the
+ * diagonal: teal top-left → blue centre → green bottom-right. */
+.vg-loader .il-matrix i:is(:nth-child(1)) {
+  background: #0fc8c3;
 }
-
-.stop-sweep {
-  background: conic-gradient(
-    from var(--sweep),
-    #0fc8c3 0%,
-    #009db8 35%,
-    #0070a7 70%,
-    #079cb5 85%,
-    #0fc8c3 100%
-  );
-  animation: sweep 1.6s linear infinite;
+.vg-loader .il-matrix i:is(:nth-child(2), :nth-child(6)) {
+  background: #009db7;
+}
+.vg-loader .il-matrix i:is(:nth-child(3), :nth-child(7), :nth-child(11)) {
+  background: #008db1;
+}
+.vg-loader .il-matrix i:is(:nth-child(4), :nth-child(8), :nth-child(12), :nth-child(16)) {
+  background: #007fac;
+}
+.vg-loader .il-matrix i:is(:nth-child(5), :nth-child(9), :nth-child(13), :nth-child(17), :nth-child(21)) {
+  background: #0072a9;
+}
+.vg-loader .il-matrix i:is(:nth-child(10), :nth-child(14), :nth-child(18), :nth-child(22)) {
+  background: #0065a5;
+}
+.vg-loader .il-matrix i:is(:nth-child(15), :nth-child(19), :nth-child(23)) {
+  background: #318d9f;
+}
+.vg-loader .il-matrix i:is(:nth-child(20), :nth-child(24)) {
+  background: #5bb492;
+}
+.vg-loader .il-matrix i:is(:nth-child(25)) {
+  background: #85da7b;
 }
 
 @keyframes sweep {
@@ -261,8 +265,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .ring-sweep,
-  .ring-sweep-quiet,
-  .stop-sweep,
   .spin,
   .shimmer,
   .tab-panel:not([hidden]) {
