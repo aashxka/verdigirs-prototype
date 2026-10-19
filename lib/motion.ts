@@ -28,6 +28,13 @@
  *  3200   steps fold into one summary line
  *  3400   answer streams in block by block (staggered 180ms)
  *
+ * RELATED ISSUES
+ *     0   Date / Sort / Filter menus grow from their trigger edge (200ms)
+ *         and shrink away faster (150ms)
+ *     0   on a sort or filter change, kept rows slide to their new
+ *         place (FLIP, 300ms) and new rows fade up (staggered 30ms)
+ *     0   a row expands like a cause (300ms), body fades in at +60ms
+ *
  * HANDOFF (ms after Generate)
  *     0   message cards land with skeleton bodies, button spins
  *   600   first message resolves out of its skeleton

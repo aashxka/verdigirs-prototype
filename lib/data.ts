@@ -341,3 +341,132 @@ export const RECIPIENTS: Recipient[] = [
     ],
   },
 ];
+
+/* ─────────────────────────────────────────────────────────
+ * Related issues (02 · Related issues, 03.2–03.5). Titles,
+ * dates, equipment and tags come from 03.2; filter counts from
+ * 03.5. Row 1's resolution is the Incident #482 record (02.53).
+ * The other resolutions are illustrative and need checking.
+ * Cooling fan failure is In progress, as on the alert inbox,
+ * which is what makes 03.5's "Resolved only · 7" add up.
+ * ───────────────────────────────────────────────────────── */
+export type MatchTag = "Same panel" | "Same symptom" | "Same cause" | "Same UPS" | "Similar harmonics" | "Same panel group";
+export type IssueStatus = "Resolved" | "In progress";
+
+export type RelatedIssue = {
+  id: string;
+  title: string;
+  date: string; // ISO, for sorting and the time range
+  equipment: string;
+  ref?: string;
+  tags: MatchTag[];
+  status: IssueStatus;
+  resolution: string;
+};
+
+/* In relevance order (closest match first). */
+export const RELATED_ISSUES: RelatedIssue[] = [
+  {
+    id: "harmonic-spike",
+    title: "Harmonic spike after rack power-on",
+    date: "2026-03-14",
+    equipment: "PDU-01-A9F",
+    tags: ["Same panel", "Same symptom", "Same cause"],
+    status: "Resolved",
+    resolution:
+      "Rack 9 brought 10 new servers online. Moved rack 9 load to PDU-02, and THDi dropped under 5% within 15 minutes. A harmonic filter was added in the next change window.",
+  },
+  {
+    id: "ups2-capacitor",
+    title: "UPS-2 capacitor bank failure",
+    date: "2026-03-14",
+    equipment: "UPS-2",
+    ref: "#482",
+    tags: ["Same UPS", "Similar harmonics"],
+    status: "Resolved",
+    resolution: "Failed 6 h after the Mar 14 harmonic spike. The UPS-2 rectifier capacitor bank was replaced.",
+  },
+  {
+    id: "thdi-phase-a",
+    title: "THDi above 5% on Phase A",
+    date: "2026-01-22",
+    equipment: "PDU-01-A9F",
+    tags: ["Same panel", "Same symptom"],
+    status: "Resolved",
+    resolution: "THDi crossed 5% during a scheduled load test and cleared when it ended. No fix needed.",
+  },
+  {
+    id: "gpu-rack",
+    title: "Harmonics after GPU rack install",
+    date: "2025-11-18",
+    equipment: "PDU-03-B12",
+    tags: ["Same cause"],
+    status: "Resolved",
+    resolution: "The new GPU servers’ switch-mode power supplies raised THDi. A harmonic filter was added on PDU-03-B12.",
+  },
+  {
+    id: "panel-b-imbalance",
+    title: "Phase imbalance on Panel B",
+    date: "2025-12-03",
+    equipment: "Panel B",
+    tags: ["Same panel group"],
+    status: "Resolved",
+    resolution: "Phase A carried more load than B and C. Circuits were rebalanced across the three phases.",
+  },
+  {
+    id: "phase-a-current",
+    title: "Phase A current spike",
+    date: "2025-10-02",
+    equipment: "PDU-01-A9F",
+    tags: ["Same panel"],
+    status: "Resolved",
+    resolution: "A failed server power supply drew excess current on Phase A. The supply was replaced.",
+  },
+  {
+    id: "cooling-fan",
+    title: "Cooling fan failure",
+    date: "2026-05-03",
+    equipment: "PDU-01-A9F",
+    tags: ["Same panel"],
+    status: "In progress",
+    resolution: "Still open. A fan replacement is in progress.",
+  },
+  {
+    id: "ups2-battery",
+    title: "UPS-2 battery test alarm",
+    date: "2025-08-09",
+    equipment: "UPS-2",
+    tags: ["Same UPS"],
+    status: "Resolved",
+    resolution: "One battery string failed its self-test. It passed on retest after the string was replaced.",
+  },
+];
+
+/* The "Why related" checkboxes in the filter (03.5). */
+export const RELATED_FILTER_TAGS: MatchTag[] = ["Same panel", "Same symptom", "Same cause", "Same UPS"];
+
+export type SortKey = "relevance" | "date" | "equipment";
+export const RELATED_SORTS: { key: SortKey; label: string; detail: string }[] = [
+  { key: "relevance", label: "Relevance", detail: "Closest match to this alert" },
+  { key: "date", label: "Date", detail: "Newest first" },
+  { key: "equipment", label: "Equipment", detail: "Grouped by panel and UPS" },
+];
+
+/* Cutoffs are fixed so the 03.2 default (8 issues in the last
+ * 12 months) holds; they read as if today were early Jun 2026. */
+export type RangeKey = "3m" | "6m" | "12m";
+export const RELATED_RANGES: { key: RangeKey; label: string; since: string }[] = [
+  { key: "3m", label: "Last 3 months", since: "2026-03-01" },
+  { key: "6m", label: "Last 6 months", since: "2025-12-01" },
+  { key: "12m", label: "Last 12 months", since: "2025-06-01" },
+];
+
+export const RELATED = {
+  placeholder: "Ask about past incidents on this panel…",
+};
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export function formatIssueDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
+}

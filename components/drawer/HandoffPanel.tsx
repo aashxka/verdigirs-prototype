@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { HANDOFF, RECIPIENTS, type Channel, type HandoffMessage, type Recipient } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { pickedMessages, usePrototype } from "@/lib/store";
-import { Badge, Button, Collapse, Icon, Spinner } from "../ui";
+import { Badge, Button, Checkbox, Collapse, Icon, Spinner } from "../ui";
 
 /* Handoff tab (04 · Handoff). Pick people → pick their channels →
  * Generate writes one message per channel, each for its reader →
@@ -165,33 +165,6 @@ function PersonRow({ recipient, last, locked }: { recipient: Recipient; last: bo
         </div>
       </Collapse>
     </div>
-  );
-}
-
-/* DS: Checkbox — 16px, radius 4. */
-function Checkbox({ checked }: { checked: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={`relative flex size-4 shrink-0 items-center justify-center rounded-[4px] transition-[background-color,box-shadow] duration-150 ${
-        checked ? "bg-verdigris-on-light" : "bg-background shadow-[inset_0_0_0_1.5px_var(--color-ring)]"
-      }`}
-    >
-      <AnimatePresence initial={false}>
-        {checked && (
-          <motion.span
-            key="check"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.1 } }}
-            transition={{ duration: 0.18, ease: EASE.snap }}
-            className="flex"
-          >
-            <Icon src="/figma/handoff/check.svg" size={12} />
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </span>
   );
 }
 

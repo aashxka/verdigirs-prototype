@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { HANDOFF, QUESTION } from "@/lib/data";
+import { HANDOFF, QUESTION, RELATED } from "@/lib/data";
 import { EASE } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Icon } from "../ui";
@@ -11,21 +11,23 @@ import { Icon } from "../ui";
 export function Composer() {
   const { state, actions } = usePrototype();
   const { analysis } = state;
-  const handoff = state.tab === "handoff";
-  // The scripted question belongs to Root cause; on Handoff the composer rests.
-  const chat = handoff ? "idle" : state.chat;
+  // The scripted question belongs to Root cause; on other tabs the composer rests.
+  const chat = state.tab === "rca" ? state.chat : "idle";
   const disabled = analysis !== "done";
   const typing = chat === "typing" || chat === "ready";
   const searching = chat === "searching" || chat === "answering";
   const canSend = typing && state.typed > 0;
 
-  const placeholder = handoff
-    ? HANDOFF.placeholder
-    : disabled
-    ? "You can ask questions once the analysis finishes"
-    : searching
-      ? "Searching…"
-      : "Ask about this alert or its causes…";
+  const placeholder =
+    state.tab === "handoff"
+      ? HANDOFF.placeholder
+      : state.tab === "related"
+        ? RELATED.placeholder
+        : disabled
+          ? "You can ask questions once the analysis finishes"
+          : searching
+            ? "Searching…"
+            : "Ask about this alert or its causes…";
 
   return (
     <div

@@ -1,7 +1,20 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef } from "react";
-import { CAUSES, CONFIRMED_STEPS, QUESTION, RECIPIENTS, SEARCH_STEPS, TRACE_STEPS, TRIAGE_STEPS, type ChannelKey, type PersonKey } from "./data";
+import {
+  CAUSES,
+  CONFIRMED_STEPS,
+  QUESTION,
+  RECIPIENTS,
+  SEARCH_STEPS,
+  TRACE_STEPS,
+  TRIAGE_STEPS,
+  type ChannelKey,
+  type MatchTag,
+  type PersonKey,
+  type RangeKey,
+  type SortKey,
+} from "./data";
 import { TIMING } from "./motion";
 
 /* ─────────────────────────────────────────────────────────
@@ -14,10 +27,16 @@ export type StepStatus = "idle" | "working" | "done";
 export type Undo = { kind: "confirm" } | { kind: "step"; key: string };
 export type Toast = { id: number; text: string; undo?: Undo };
 export type ChatPhase = "idle" | "typing" | "ready" | "searching" | "answering" | "done";
-export type Tab = "rca" | "handoff";
+export type Tab = "rca" | "related" | "handoff";
 export type HandoffPhase = "pick" | "writing" | "ready" | "sending" | "sent";
 /* null = person not picked; [] = picked, no channel yet. */
 export type Picks = Record<PersonKey, ChannelKey[] | null>;
+export type RelatedFilter = { tags: MatchTag[]; resolvedOnly: boolean; range: RangeKey };
+export type RelatedMenu = "date" | "filter" | "sort" | null;
+/* filter = applied; draft = what the open Filter popover is editing. */
+export type Related = { sort: SortKey; filter: RelatedFilter; draft: RelatedFilter; menu: RelatedMenu; open: string[] };
+
+export const NO_FILTER: RelatedFilter = { tags: [], resolvedOnly: false, range: "12m" };
 
 export type State = {
   view: "alert" | "signals";
@@ -45,6 +64,7 @@ export type State = {
   picks: Picks;
   handoff: HandoffPhase;
   written: number;
+  related: Related;
 };
 
 const initial: State = {
@@ -73,6 +93,7 @@ const initial: State = {
   picks: { tech: null, lead: null },
   handoff: "pick",
   written: 0,
+  related: { sort: "relevance", filter: NO_FILTER, draft: NO_FILTER, menu: null, open: [] },
 };
 
 /* Messages to write, in the order they appear: person, then channel. */
@@ -243,7 +264,40 @@ function useController() {
         patch({ view: "alert", drawer: "open", tab: "rca" });
       },
       setTab(tab: Tab) {
-        if (ref.current.tab !== tab) patch({ tab });
+        const s = ref.current;
+        if (s.tab !== tab) patch({ tab, related: { ...s.related, menu: null } });
+      },
+      /* Related issues: Date and Sort apply on pick; Filter edits a
+       * draft that only lands on Apply. */
+      openRelatedMenu(menu: RelatedMenu) {
+        const r = ref.current.related;
+        const next = r.menu === menu ? null : menu;
+        patch({ related: { ...r, menu: next, draft: next === "filter" ? r.filter : r.draft } });
+      },
+      setRelatedSort(sort: SortKey) {
+        patch({ related: { ...ref.current.related, sort, menu: null } });
+      },
+      setRelatedRange(range: RangeKey) {
+        const r = ref.current.related;
+        patch({ related: { ...r, filter: { ...r.filter, range }, menu: null } });
+      },
+      editRelatedDraft(draft: Partial<RelatedFilter>) {
+        const r = ref.current.related;
+        patch({ related: { ...r, draft: { ...r.draft, ...draft } } });
+      },
+      clearRelatedDraft() {
+        patch({ related: { ...ref.current.related, draft: NO_FILTER } });
+      },
+      clearRelatedFilter() {
+        patch({ related: { ...ref.current.related, filter: NO_FILTER, draft: NO_FILTER, menu: null } });
+      },
+      applyRelatedFilter() {
+        const r = ref.current.related;
+        patch({ related: { ...r, filter: r.draft, menu: null } });
+      },
+      toggleIssue(id: string) {
+        const r = ref.current.related;
+        patch({ related: { ...r, open: r.open.includes(id) ? r.open.filter((x) => x !== id) : [...r.open, id] } });
       },
       togglePerson(key: PersonKey) {
         const s = ref.current;

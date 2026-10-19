@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import type { Confidence, Source } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 
@@ -154,5 +154,32 @@ export function Rank({ n, tone = "neutral" }: { n: number; tone?: "neutral" | "d
   }[tone];
   return (
     <span className={`flex size-5 shrink-0 items-center justify-center rounded-full font-mono text-[12px] leading-4 transition-colors duration-200 ${cls}`}>{n}</span>
+  );
+}
+
+/* DS: Checkbox — 16px, radius 4. */
+export function Checkbox({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`relative flex size-4 shrink-0 items-center justify-center rounded-[4px] transition-[background-color,box-shadow] duration-150 ${
+        checked ? "bg-verdigris-on-light" : "bg-background shadow-[inset_0_0_0_1.5px_var(--color-ring)]"
+      }`}
+    >
+      <AnimatePresence initial={false}>
+        {checked && (
+          <motion.span
+            key="check"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.1 } }}
+            transition={{ duration: 0.18, ease: EASE.snap }}
+            className="flex"
+          >
+            <Icon src="/figma/handoff/check.svg" size={12} />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
   );
 }

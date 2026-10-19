@@ -9,11 +9,12 @@ import { ComposerFooter } from "./Composer";
 import { Conversation } from "./Conversation";
 import { HandoffPanel } from "./HandoffPanel";
 import { RcaPanel } from "./RcaPanel";
+import { RelatedPanel } from "./RelatedPanel";
 
-/* Root cause and Handoff are live; Related issues and Log stay inert. */
+/* Root cause, Related issues and Handoff are live; Log stays inert. */
 const TABS: { label: string; tab?: Tab }[] = [
   { label: "Root cause", tab: "rca" },
-  { label: "Related issues" },
+  { label: "Related issues", tab: "related" },
   { label: "Log" },
   { label: "Handoff", tab: "handoff" },
 ];
@@ -96,10 +97,13 @@ export function AssistantDrawer() {
       </nav>
 
       <div ref={scrollRef} className="scroll-quiet relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden">
-        {/* Both panels stay mounted so switching tabs never replays the analysis. */}
+        {/* Panels stay mounted so switching tabs never replays the analysis. */}
         <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "rca"}>
           <RcaPanel />
           <Conversation bubbleRef={bubbleRef} />
+        </div>
+        <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "related"}>
+          <RelatedPanel />
         </div>
         <div className="tab-panel relative flex flex-col px-6 pb-20 pt-6" hidden={state.tab !== "handoff"}>
           <HandoffPanel />
