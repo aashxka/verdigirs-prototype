@@ -49,7 +49,7 @@ export function AssistantDrawer() {
       initial={false}
       animate={{ transform: open ? "translateX(0px)" : "translateX(640px)" }}
       transition={{ duration: open ? DUR.drawer : DUR.drawerOut, ease: EASE.reveal }}
-      className="absolute right-0 top-0 z-20 flex h-full w-[600px] flex-col items-center border-l border-border bg-background pb-3 shadow-drawer"
+      className="absolute right-0 top-0 z-20 flex h-full w-[600px] flex-col items-center border-l border-border bg-background shadow-drawer"
     >
       <header className="flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
         <h2 className="flex-1 text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
@@ -115,7 +115,7 @@ export function AssistantDrawer() {
 function ToastHost() {
   const { state } = usePrototype();
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[138px] z-10 flex justify-center">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[126px] z-10 flex justify-center">
       <AnimatePresence>{state.toast && <ToastView key={state.toast.id} toast={state.toast} />}</AnimatePresence>
     </div>
   );

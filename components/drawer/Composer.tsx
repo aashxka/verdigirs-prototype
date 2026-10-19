@@ -119,13 +119,13 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
 export function ComposerFooter() {
   const { state } = usePrototype();
   return (
+    /* Full-width dock: rounded top, square bottom, no stroke, a soft
+     * shadow along the top edge only. */
     <div
-      className="flex w-[575px] shrink-0 flex-col gap-3 rounded-[14px] p-4"
+      className="flex w-full shrink-0 flex-col gap-3 rounded-t-[14px] p-4"
       style={{
-        border: "1px solid transparent",
-        background:
-          "radial-gradient(200px 180px at 0 0, rgba(236,251,250,0.9), rgba(236,251,250,0)) padding-box, linear-gradient(#fff, #fff) padding-box, radial-gradient(520px 220px at 0 0, rgba(15,200,195,0.55), rgba(33,65,150,0.3) 45%, #e4e4e7 80%) border-box",
-        boxShadow: "0 1px 1px rgba(0,0,0,0.05), 0 8px 20px -10px rgba(0,8,20,0.08)",
+        background: "radial-gradient(200px 180px at 0 0, rgba(236,251,250,0.9), rgba(236,251,250,0)), #fff",
+        boxShadow: "0 -1px 2px rgba(0,0,0,0.04), 0 -10px 24px -12px rgba(0,8,20,0.12)",
       }}
     >
       <Composer />

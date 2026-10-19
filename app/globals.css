@@ -127,9 +127,10 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────
- * Verdigris gradient ring (Investigate with AI, composer stop).
- * Rest = linear brand gradient; loading = conic sweep that
- * rotates clockwise at 1.6s per turn (2× the motion spin token).
+ * Verdigris gradient ring (Investigate with AI, 1251:107 State11).
+ * Rest = linear teal → blue → green; loading = conic sweep
+ * (teal → blue → purple → rose) that rotates clockwise at 1.6s
+ * per turn (2× the motion spin token). Stops come from Figma.
  * ───────────────────────────────────────────────────────── */
 @property --sweep {
   syntax: "<angle>";
@@ -139,27 +140,36 @@ body {
 
 .ring-rest {
   background: linear-gradient(
-    90deg in oklch,
-    #0fc8c3,
-    #214196,
-    #2f0b6f,
-    #d0447a,
-    #ff6361,
-    #fecf00,
-    #0fc8c3
+    90deg,
+    #0fc8c3 0%,
+    #00a7bb 4.17%,
+    #0086ae 28.365%,
+    #0065a5 57.692%,
+    #85da7b 91.67%,
+    #44d4a5 95.83%,
+    #0fc8c3 100%
   );
 }
 
 .ring-sweep {
   background: conic-gradient(
-    from var(--sweep) in oklch,
-    #0fc8c3,
-    #214196,
-    #2f0b6f,
-    #d0447a,
-    #ff6361,
-    #fecf00,
-    #0fc8c3
+    from calc(var(--sweep) + 270deg),
+    #0fc8c3 0%,
+    #00a7bb 4.17%,
+    #0086ae 8.33%,
+    #0065a5 12.5%,
+    #10539d 14.585%,
+    #214196 16.67%,
+    #374193 20.836%,
+    #4c428f 25.003%,
+    #784288 33.335%,
+    #a44381 41.668%,
+    #d0447a 50%,
+    #9f658c 62.5%,
+    #6f869f 75%,
+    #3fa7b1 87.5%,
+    #27b7ba 93.75%,
+    #0fc8c3 100%
   );
   animation: sweep 1.6s linear infinite;
 }

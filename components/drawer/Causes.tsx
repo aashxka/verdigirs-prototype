@@ -230,7 +230,7 @@ function Reasoning() {
             <Stagger open={open} i={1}>
               <div className="flex flex-col gap-1">
                 <span className="flex items-center gap-2 text-[14px] font-semibold leading-5 text-foreground">
-                  Why it’s <ConfidenceLabel level="High" /> confidence
+                  Why confidence is <ConfidenceLabel level="High" />
                 </span>
                 <span className="flex flex-col text-[14px] leading-5 text-foreground-secondary">
                   {REASONING.why.map((w) => (
