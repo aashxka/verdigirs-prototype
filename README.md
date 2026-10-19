@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Signals Assistant · RCA prototype
 
-## Getting Started
+Coded prototype of the Verdigris Signals Assistant, built from the Figma flows
+**01 · Root cause analysis** and **05 · Ask a follow-up** (file `AAbo1Bf4bDVmq8UxfLGBpE`),
+using the Verdigris design tokens.
 
-First, run the development server:
+Everything is scripted. There is no AI model, API key or network call, so the demo
+cannot fail live. All copy and numbers live in `lib/data.ts`; every timing and curve
+lives in `lib/motion.ts`.
+
+## Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Press **R** at any point to restart from the alert.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Flow
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Alert → **Investigate with AI** (gradient ring sweeps, drawer opens)
+2. Live investigation trace → likely causes resolve one by one
+3. Expand cause #1 → Show / Hide reasoning → **Confirm**
+4. Causes re-tag, recommended steps re-rank, toast with Undo
+5. **Schedule** → dialog → Scheduled · Tue 09:00
+6. Any time after the analysis: click the composer, the question auto-types,
+   press Enter → search steps → answer → what-if simulator (drag or tap the stops)
+7. Source chip / View in Signals → sensor page with the Assistant minimized → Back to root cause

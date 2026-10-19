@@ -1,26 +1,249 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────
+ * Verdigris tokens — mirrored from the Figma "Verdigris tokens"
+ * and "Verdigris radius" collections (file AAbo1Bf4bDVmq8UxfLGBpE).
+ * ───────────────────────────────────────────────────────── */
+@theme {
+  /* brand */
+  --color-verdigris: #0fc8c3;
+  --color-verdigris-on-light: #007571;
+  --color-verdigris-50: #ecfbfa;
+  --color-verdigris-100: #ddf7f7;
+  --color-verdigris-300: #abecea;
+  --color-pastel-red: #ff6361;
+  --color-pastel-red-subtle: #fff0f0;
+  --color-midnight-purple: #2f0b6f;
+  --color-cyber-yellow: #fecf00;
+  --color-patina-ink: #0b2226;
+  --color-patina-ink-hover: #142f33;
+
+  /* semantic */
+  --color-background: #ffffff;
+  --color-card: #ffffff;
+  --color-surface-subtle: #fafafa;
+  --color-secondary: #f4f4f5;
+  --color-primary: #18181b;
+  --color-primary-foreground: #fafafa;
+  --color-foreground: #09090b;
+  --color-foreground-secondary: #27272a;
+  --color-foreground-tertiary: #52525b;
+  --color-muted-foreground: #71717b;
+  --color-subtle-foreground: #9f9fa9;
+  --color-border: #e4e4e7;
+  --color-ring: #9f9fa9;
+  --color-destructive: #e7000b;
+  --color-warning-fg: #8a5a00;
+  --color-warning-bg: #fff4d6;
+  --color-accent-subtle: #ecfbfa;
+  --color-accent-muted: #ddf7f7;
+  --color-accent-border: #abecea;
+  --color-neutral-500: #71717b;
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-button: 6px;
+
+  /* type */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-lato: var(--font-lato), var(--font-inter), sans-serif;
+
+  /* motion — Verdigris reveal-cubic, ease, and the composer curve */
+  --ease-reveal: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* elevation */
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.05);
+  --shadow-drawer: -1px 0 3px rgba(0, 0, 0, 0.06), -12px 0 32px rgba(0, 0, 0, 0.08);
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --shadow-dialog: 0 2px 6px rgba(0, 0, 0, 0.06), 0 16px 48px -8px rgba(0, 0, 0, 0.16);
+  --shadow-metric: 0 1px 1.5px rgba(0, 0, 0, 0.1), 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --ring-focus: oklch(0.72 0.15 185 / 0.2);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html,
+body {
+  background: var(--color-surface-subtle);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  overflow: hidden;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-verdigris-on-light);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Thin, quiet scrollbars inside the drawer */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.scroll-quiet::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-quiet::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 8px;
+  border: 2px solid white;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Collapse: height animation without measuring the DOM, so it
+ * stays correct inside the scaled stage. Duration/easing come
+ * from inline custom properties set by <Collapse>.
+ * ───────────────────────────────────────────────────────── */
+.vg-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--collapse-out, 200ms) var(--ease-reveal);
+}
+.vg-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+  transition-duration: var(--collapse-in, 300ms);
+}
+.vg-collapse > .vg-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Verdigris gradient ring (Investigate with AI, composer stop).
+ * Rest = linear brand gradient; loading = conic sweep that
+ * rotates clockwise at 1.6s per turn (2× the motion spin token).
+ * ───────────────────────────────────────────────────────── */
+@property --sweep {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.ring-rest {
+  background: linear-gradient(
+    90deg in oklch,
+    #0fc8c3,
+    #214196,
+    #2f0b6f,
+    #d0447a,
+    #ff6361,
+    #fecf00,
+    #0fc8c3
+  );
+}
+
+.ring-sweep {
+  background: conic-gradient(
+    from var(--sweep) in oklch,
+    #0fc8c3,
+    #214196,
+    #2f0b6f,
+    #d0447a,
+    #ff6361,
+    #fecf00,
+    #0fc8c3
+  );
+  animation: sweep 1.6s linear infinite;
+}
+
+/* Quieter composer ring: dark edge with a teal → blue sheen */
+.ring-sweep-quiet {
+  background: conic-gradient(
+    from var(--sweep),
+    #2a4245 0%,
+    #2a4245 50%,
+    #155976 58%,
+    #0070a7 66%,
+    #009db8 80%,
+    #0fc8c3 90%,
+    #2a4245 100%
+  );
+  animation: sweep 1.6s linear infinite;
+}
+
+.stop-sweep {
+  background: conic-gradient(
+    from var(--sweep),
+    #0fc8c3 0%,
+    #009db8 35%,
+    #0070a7 70%,
+    #079cb5 85%,
+    #0fc8c3 100%
+  );
+  animation: sweep 1.6s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    --sweep: 360deg;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Skeleton shimmer for rows the Assistant is still ranking */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-secondary) 0%,
+    #fbfbfb 45%,
+    var(--color-secondary) 90%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.4s var(--ease-standard) infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.caret {
+  animation: caret 1s steps(1) infinite;
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-sweep,
+  .ring-sweep-quiet,
+  .stop-sweep,
+  .spin,
+  .shimmer {
+    animation: none;
+  }
+  .vg-collapse {
+    transition-duration: 0ms !important;
+  }
 }

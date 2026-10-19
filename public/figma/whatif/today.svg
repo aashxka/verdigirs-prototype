@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="453" height="120" viewBox="0 0 453 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Today" clip-path="url(#clip0_0_299)">
+<path id="Area" opacity="0.16" d="M0 108H24.1848C42.7885 107.5 66.9733 90 84.9259 84V120H0V108Z" fill="#0FC8C3"/>
+<path id="Line" d="M0 108H24.1848C42.7885 107.5 66.9733 90 84.9259 84" stroke-width="2" stroke-linecap="round" stroke="#0FC8C3"/>
+</g>
+<defs>
+<clipPath id="clip0_0_299">
+<rect width="453" height="120" fill="white"/>
+</clipPath>
+</defs>
+</svg>
