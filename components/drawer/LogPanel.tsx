@@ -1,18 +1,20 @@
 "use client";
 
 import { motion } from "motion/react";
-import { HANDOFF, LOG, LOG_ENTRIES, RECIPIENTS, type LogEntry } from "@/lib/data";
+import { LOG, LOG_EVENTS, LOG_SEED, RECIPIENTS, type LogEntry, type LogItem } from "@/lib/data";
 import { EASE } from "@/lib/motion";
 import { pickedMessages, usePrototype, type Picks } from "@/lib/store";
 import { Badge } from "../ui";
 
 /* Log tab (03 · Log, 08.1). A read-only timeline of the alert,
  * newest first: nothing here is interactive, it only scrolls.
- * Mounts on first open, so the entries settle in once; a handoff
- * sent from the Handoff tab lands on top, as its toast promises. */
+ * Below the alert itself, every entry is something this session
+ * did, so new ones land on top as you work (a sent handoff too,
+ * as its toast promises). Mounts on first open, so the entries
+ * there settle in once. */
 export function LogPanel() {
   const { state } = usePrototype();
-  const entries = state.handoff === "sent" ? [handoffEntry(state.picks), ...LOG_ENTRIES] : LOG_ENTRIES;
+  const entries = [...state.log.map((e) => sessionEntry(e, state.picks)).reverse(), ...LOG_SEED];
 
   return (
     <div className="flex w-full flex-col gap-8">
@@ -40,13 +42,14 @@ export function LogPanel() {
   );
 }
 
-/* The handoff's own entry, written from what was actually sent. */
-function handoffEntry(picks: Picks): LogEntry {
+function sessionEntry(e: LogItem, picks: Picks): LogEntry {
+  if (e.key !== "handoff") return { id: e.key, time: e.time, ...LOG_EVENTS[e.key] };
+  // The handoff's own entry, written from what was actually sent.
   const n = pickedMessages(picks).length;
   const names = RECIPIENTS.filter((r) => picks[r.key]?.length).map((r) => r.name);
   return {
     id: "handoff",
-    time: HANDOFF.sentAt,
+    time: e.time,
     title: "Handoff sent",
     body: `${n} ${n === 1 ? "message" : "messages"} to ${names.join(" and ")}.`,
     who: "Signals Assistant · sent by you",

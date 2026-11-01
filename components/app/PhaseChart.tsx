@@ -1,13 +1,15 @@
-/* Phase A current + THDi chart (static snapshot from the Signals alert page). */
+/* Phase A current + THDi chart (static snapshot from the Signals alert page).
+ * Covers the same 11:30–13:30 window the Assistant analyses; the Figma
+ * line was re-timed so its peak sits on 12:30, the spike in the headline. */
 const A = "/figma/app";
 
 const Y_LEFT = ["60A", "45A", "30A", "15A", "0A"];
 const Y_RIGHT = ["20%", "15%", "10%", "5%", "0%"];
-const X = ["06 AM", "09 AM", "12 PM", "03 PM", "06 PM"];
+const X = ["11:30", "12:00", "12:30", "13:00", "13:30"];
 
 export function PhaseChart() {
   return (
-    <div className="relative h-[320px] w-[913px] shrink-0 overflow-hidden" aria-label="Phase A current and total harmonic distortion, 6 AM to 6 PM" role="img">
+    <div className="relative h-[320px] w-[913px] shrink-0 overflow-hidden" aria-label="Phase A current and total harmonic distortion, 11:30 to 13:30" role="img">
       {/* area + line, clipped to the plot like the original recharts clip path */}
       <div
         className="absolute"

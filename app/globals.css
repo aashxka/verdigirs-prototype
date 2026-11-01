@@ -122,9 +122,11 @@ body {
   grid-template-rows: 1fr;
   transition-duration: var(--collapse-in, 300ms);
 }
+/* clip, not hidden: hidden makes a scroll container, which would stop
+ * sticky children (the cause verdict) from riding the drawer's scroll. */
 .vg-collapse > .vg-collapse-inner {
   min-height: 0;
-  overflow: hidden;
+  overflow: clip;
 }
 
 /* ─────────────────────────────────────────────────────────

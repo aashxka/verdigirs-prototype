@@ -4,37 +4,98 @@ import { AnimatePresence, motion } from "motion/react";
 import { CAUSE_SUMMARY, CAUSES, EVIDENCE, REASONING, type Cause } from "@/lib/data";
 import { DUR, EASE, SPRING } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
-import { Badge, Button, Collapse, ConfidenceLabel, Icon, Rank, SourceChip } from "../ui";
+import { Badge, Button, Collapse, ConfidenceLabel, Icon, SourceChip } from "../ui";
 import { EvidenceChart } from "./EvidenceChart";
+import { CauseSimulator, OddsBlock } from "./WhatIf";
 
 const C = "/figma/cause";
 
-/* Likely causes card: rows resolve out of skeletons one by one. */
+/* Likely causes: rows resolve out of skeletons one by one. It is one
+ * card drawn as two halves that meet seamlessly (cause #1's bottom
+ * border is the divider), so when a cause is confirmed the halves can
+ * part: "Other possible causes" opens between them, the corners round
+ * off, and the remaining causes renumber from 1. Undo closes it back. */
 export function CauseList() {
   const { state } = usePrototype();
+  const split = state.feedback === "confirmed";
+  const [root, ...others] = CAUSES;
+  const corners = "transition-[border-radius] duration-300 ease-[var(--ease-reveal)]";
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-lg border border-border bg-background">
-      {CAUSES.map((cause, i) => (
-        <div key={cause.id} className={i < CAUSES.length - 1 ? "border-b border-border" : ""}>
-          <AnimatePresence mode="popLayout" initial={false}>
-            {state.causesShown > i ? (
-              <motion.div
-                key="row"
-                initial={{ opacity: 0, filter: "blur(6px)", y: 4 }}
-                animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                transition={{ duration: DUR.reveal, ease: EASE.reveal }}
-              >
-                <CauseRow cause={cause} />
-              </motion.div>
-            ) : (
-              <motion.div key="skeleton" exit={{ opacity: 0, transition: { duration: 0.12 } }}>
-                <SkeletonRow widths={SKELETON[i]} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      ))}
+    <div className="flex w-full flex-col">
+      <div className={`overflow-clip border border-border bg-background ${corners} ${split ? "rounded-lg" : "rounded-t-lg rounded-b-none"}`}>
+        <CauseSlot cause={root} i={0} />
+      </div>
+      <Collapse open={split} inMs={300} outMs={200}>
+        <motion.h3
+          initial={false}
+          animate={split ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: -4, filter: "blur(3px)" }}
+          transition={{ duration: split ? DUR.reveal : 0.12, ease: EASE.reveal, delay: split ? 0.08 : 0 }}
+          className="pb-3 pt-6 text-[16px] font-semibold leading-6 text-foreground"
+        >
+          Other possible causes
+        </motion.h3>
+      </Collapse>
+      <div className={`overflow-clip border-x border-b border-border bg-background ${corners} ${split ? "rounded-lg border-t" : "rounded-b-lg rounded-t-none"}`}>
+        {others.map((cause, j) => (
+          <div key={cause.id} className={j < others.length - 1 ? "border-b border-border" : ""}>
+            <CauseSlot cause={cause} i={j + 1} />
+          </div>
+        ))}
+      </div>
     </div>
+  );
+}
+
+function CauseSlot({ cause, i }: { cause: Cause; i: number }) {
+  const { state } = usePrototype();
+  return (
+    <AnimatePresence mode="popLayout" initial={false}>
+      {state.causesShown > i ? (
+        <motion.div
+          key="row"
+          initial={{ opacity: 0, filter: "blur(6px)", y: 4 }}
+          animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+          transition={{ duration: DUR.reveal, ease: EASE.reveal }}
+        >
+          <CauseRow cause={cause} />
+        </motion.div>
+      ) : (
+        <motion.div key="skeleton" exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+          <SkeletonRow widths={SKELETON[i]} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* A cause's place in the list. The confirmed root cause trades its
+ * number for a check; the others count up from 1 under "Other
+ * possible causes", each digit rolling up into its new value. */
+export function CauseRank({ id, dark = false }: { id: Cause["id"]; dark?: boolean }) {
+  const { state } = usePrototype();
+  const confirmed = state.feedback === "confirmed";
+  const root = confirmed && id === 1;
+  const n = confirmed ? id - 1 : id;
+  const tone = root ? "bg-verdigris-on-light text-white" : dark ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground-secondary";
+  return (
+    <span
+      className={`relative flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full font-mono text-[12px] leading-4 transition-colors duration-200 ${tone}`}
+      aria-label={root ? "Root cause" : `Cause ${n}`}
+    >
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={root ? "check" : n}
+          initial={{ opacity: 0, y: 8, filter: "blur(2px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -8, filter: "blur(2px)" }}
+          transition={{ duration: 0.28, ease: EASE.reveal, delay: confirmed && !root ? 0.12 + id * 0.06 : 0 }}
+          className="flex"
+          aria-hidden
+        >
+          {root ? <Icon src="/figma/handoff/check.svg" size={12} /> : n}
+        </motion.span>
+      </AnimatePresence>
+    </span>
   );
 }
 
@@ -60,12 +121,12 @@ function CauseRow({ cause }: { cause: Cause }) {
   const { state, actions } = usePrototype();
   const primary = cause.id === 1;
   const expanded = primary && state.expanded;
-  const confirmed = state.feedback === "confirmed";
-  const feedbackChip = confirmed ? (primary ? "Confirmed by you" : "Unlikely root cause") : null;
+  const confirmedHere = primary && state.feedback === "confirmed";
+  const simOpen = state.simOpen.includes(cause.id);
 
   const header = (
     <>
-      <Rank n={cause.id} tone={expanded ? "dark" : "neutral"} />
+      <CauseRank id={cause.id} dark={expanded} />
       <span className="flex min-w-0 flex-1 flex-col gap-2">
         <span className="text-[14px] font-medium leading-5 text-foreground">{cause.title}</span>
         <span className="flex flex-wrap gap-x-2 gap-y-1.5">
@@ -74,17 +135,17 @@ function CauseRow({ cause }: { cause: Cause }) {
           ))}
         </span>
         <AnimatePresence initial={false}>
-          {feedbackChip && (
+          {confirmedHere && (
             <motion.span
-              key={feedbackChip}
+              key="confirmed"
               className="flex"
               initial={{ opacity: 0, scale: 0.92, filter: "blur(3px)" }}
               animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
               exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.12 } }}
-              transition={{ ...SPRING.pop, delay: primary ? 0.06 : 0.12 + cause.id * 0.07 }}
+              transition={{ ...SPRING.pop, delay: 0.06 }}
               style={{ transformOrigin: "left center" }}
             >
-              <Badge tone={primary ? "teal" : "muted"}>{feedbackChip}</Badge>
+              <Badge tone="teal">Confirmed by you</Badge>
             </motion.span>
           )}
         </AnimatePresence>
@@ -100,40 +161,59 @@ function CauseRow({ cause }: { cause: Cause }) {
     </>
   );
 
-  if (!primary) {
-    return <div className="flex items-start gap-3 bg-background p-4">{header}</div>;
-  }
+  // The odds block sits outside the clickable header (no buttons inside
+  // a button); :has() still tints the whole row when the header is hovered.
+  const odds = (
+    <div className="pb-4 pl-12 pr-4 pt-3">
+      <OddsBlock id={cause.id} />
+    </div>
+  );
+  const open = expanded || simOpen;
 
   return (
-    <div className={`transition-colors duration-200 ${expanded ? "bg-surface-subtle" : "bg-background"}`}>
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        onClick={actions.toggleCause}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            actions.toggleCause();
-          }
-        }}
-        className={`flex cursor-pointer items-start gap-3 p-4 transition-colors duration-150 ${
-          expanded ? "border-b border-border" : "hover:bg-surface-subtle"
-        }`}
-      >
-        {header}
-      </div>
-      <Collapse open={expanded} inMs={300} outMs={200}>
-        <CauseDetail open={expanded} />
+    <div
+      id={`cause-${cause.id}`}
+      className={`transition-colors duration-200 ${open ? "bg-surface-subtle" : "bg-background has-[[data-head]:hover]:bg-surface-subtle"}`}
+    >
+      {primary ? (
+        <div
+          data-head
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          onClick={actions.toggleCause}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              actions.toggleCause();
+            }
+          }}
+          className="flex cursor-pointer items-start gap-3 px-4 pt-4"
+        >
+          {header}
+        </div>
+      ) : (
+        <div className="flex items-start gap-3 px-4 pt-4">{header}</div>
+      )}
+      {odds}
+      <Collapse open={simOpen} inMs={300} outMs={200}>
+        <CauseSimulator id={cause.id} open={simOpen} />
       </Collapse>
+      {primary && (
+        <Collapse open={expanded} inMs={300} outMs={200}>
+          <div className="border-t border-border">
+            <CauseDetail open={expanded} />
+          </div>
+        </Collapse>
+      )}
     </div>
   );
 }
 
-/* Expanded cause #1: verdict, reasoning, summary, chart, evidence. */
+/* Expanded cause #1: reasoning, summary, chart, evidence, then the
+ * verdict, so the question comes after the proof. */
 function CauseDetail({ open }: { open: boolean }) {
-  const { state, actions } = usePrototype();
-  const confirming = state.feedback === "confirming";
+  const { actions } = usePrototype();
   return (
     <motion.div
       initial={false}
@@ -141,16 +221,6 @@ function CauseDetail({ open }: { open: boolean }) {
       transition={{ duration: open ? 0.26 : 0.12, ease: EASE.reveal, delay: open ? 0.06 : 0 }}
       className="flex flex-col gap-5 pb-5 pl-12 pr-4 pt-3"
     >
-      <div className="flex items-center gap-1 py-0.5">
-        <span className="flex-1 text-[14px] font-medium leading-5 text-foreground">Is this the cause?</span>
-        <Button kind="secondary" loading={confirming} onClick={actions.confirm}>
-          Confirm
-        </Button>
-        <Button kind="secondary" disabled={confirming}>
-          Rule out
-        </Button>
-      </div>
-
       <Reasoning />
 
       <div className="flex flex-col gap-4">
@@ -182,7 +252,38 @@ function CauseDetail({ open }: { open: boolean }) {
           ))}
         </div>
       </div>
+
+      <Verdict />
     </motion.div>
+  );
+}
+
+/* Sits after the evidence, and while the evidence is on screen it
+ * rides the bottom edge of the scroll, so the decision is always one
+ * tap away. Content fades out beneath it instead of meeting a rule. */
+function Verdict() {
+  const { state, actions } = usePrototype();
+  const confirming = state.feedback === "confirming";
+  const confirmed = state.feedback === "confirmed";
+  return (
+    <div className="sticky bottom-0 z-[1] -mb-5 flex min-h-[60px] items-center gap-1 bg-surface-subtle pb-5 pt-3 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-5 before:bg-linear-to-t before:from-surface-subtle before:to-transparent">
+      {confirmed ? (
+        <span className="flex flex-1 items-center gap-2 text-[14px] font-medium leading-5 text-foreground">
+          <Icon src={`${C}/circle-check.svg`} size={16} />
+          You confirmed this as the root cause.
+        </span>
+      ) : (
+        <>
+          <span className="flex-1 text-[14px] font-medium leading-5 text-foreground">Is this the cause?</span>
+          <Button kind="secondary" loading={confirming} onClick={actions.confirm}>
+            Confirm
+          </Button>
+          <Button kind="secondary" disabled={confirming}>
+            Rule out
+          </Button>
+        </>
+      )}
+    </div>
   );
 }
 

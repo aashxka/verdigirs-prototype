@@ -21,7 +21,7 @@ export function AlertPage({ investigating, onInvestigate }: { investigating: boo
           <div className="flex flex-col gap-3 px-5">
             <div className="flex h-[18px] items-center justify-between">
               <span className="text-[14px] font-semibold leading-[23px] tracking-[-0.15px] text-destructive">Critical</span>
-              <span className="text-[14px] leading-[21px] text-foreground-tertiary">Updated Monday, Today, 4:00 PM</span>
+              <span className="text-[14px] leading-[21px] text-foreground-tertiary">Updated today, 13:30</span>
             </div>
             <div className="flex items-start justify-between">
               <span className="flex items-center gap-2 text-[14px] leading-[21px] text-foreground">
@@ -43,7 +43,7 @@ export function AlertPage({ investigating, onInvestigate }: { investigating: boo
               <PhaseTabs />
               <div className="flex flex-col gap-1">
                 <p className="text-[14px] font-semibold leading-[27px] tracking-[-0.44px] text-foreground">
-                  Phase A current spiked 16% above threshold at 12:30 PM.
+                  Phase A current spiked 16% above threshold at 12:30.
                 </p>
                 <ul className="list-disc text-[14px] leading-[21px] tracking-[-0.15px] text-foreground-secondary">
                   <li className="ms-[21px]">Harmonic distortion at 180%, 36× above safe limit</li>

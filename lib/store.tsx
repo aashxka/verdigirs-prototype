@@ -2,14 +2,20 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef } from "react";
 import {
+  CAUSE_ODDS,
   CAUSES,
+  CONFIRMED_ONLY,
   CONFIRMED_STEPS,
   QUESTION,
   RECIPIENTS,
   SEARCH_STEPS,
   TRACE_STEPS,
   TRIAGE_STEPS,
+  clockTime,
+  type Cause,
   type ChannelKey,
+  type LogItem,
+  type LogKey,
   type MatchTag,
   type PersonKey,
   type RangeKey,
@@ -60,13 +66,22 @@ export type State = {
   searchFolded: boolean;
   answerShown: number;
   asked: boolean;
-  whatIf: { rack: number; ups: number };
+  /* Per-cause failure-odds simulators: which are open, and the stop
+   * each one's lever sits on. */
+  simOpen: Cause["id"][];
+  simStop: Record<Cause["id"], number>;
   picks: Picks;
   handoff: HandoffPhase;
   written: number;
   related: Related;
   /* The Log plays its entrance once, the first time it opens. */
   logSeen: boolean;
+  /* What this session has done, oldest first, and the Log clock
+   * (one tick per event; undo removes the event, not the tick). */
+  log: LogItem[];
+  tick: number;
+  /* The Log as it stood when the handoff was written. */
+  handoffDraft: { log: LogItem[]; at: string } | null;
 };
 
 const initial: State = {
@@ -91,12 +106,16 @@ const initial: State = {
   searchFolded: false,
   answerShown: 0,
   asked: false,
-  whatIf: { rack: 0, ups: 0 },
+  simOpen: [],
+  simStop: { 1: 0, 2: 0, 3: 0 },
   picks: { tech: null, lead: null },
   handoff: "pick",
   written: 0,
   related: { sort: "relevance", filter: NO_FILTER, draft: NO_FILTER, menu: null, open: [] },
   logSeen: false,
+  log: [],
+  tick: 0,
+  handoffDraft: null,
 };
 
 /* Messages to write, in the order they appear: person, then channel. */
@@ -111,7 +130,9 @@ type Action =
   | { type: "patch"; patch: Partial<State> }
   | { type: "step"; key: string; status: StepStatus }
   | { type: "toast"; text: string; undo?: Undo }
-  | { type: "dismissToast"; id: number };
+  | { type: "dismissToast"; id: number }
+  | { type: "log"; key: LogKey }
+  | { type: "unlog"; keys: string[] };
 
 let toastId = 0;
 
@@ -127,6 +148,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, toast: { id: ++toastId, text: action.text, undo: action.undo } };
     case "dismissToast":
       return state.toast?.id === action.id ? { ...state, toast: null } : state;
+    case "log":
+      return { ...state, log: [...state.log, { key: action.key, time: clockTime(state.tick) }], tick: state.tick + 1 };
+    case "unlog":
+      return { ...state, log: state.log.filter((e) => !action.keys.includes(e.key)) };
   }
 }
 
@@ -181,11 +206,14 @@ function useController() {
     CAUSES.forEach((_, i) =>
       after("analysis", t0 + TIMING.causesStart + i * TIMING.causeStagger, () => patch({ causesShown: i + 1 })),
     );
-    after("analysis", t0 + TIMING.stepsAppear, () => patch({ stepsShown: true, analysis: "done" }));
+    after("analysis", t0 + TIMING.stepsAppear, () => {
+      patch({ stepsShown: true, analysis: "done" });
+      dispatch({ type: "log", key: "analysis" });
+    });
   }, [after, clear, patch]);
 
-  const actions = useMemo(
-    () => ({
+  const actions = useMemo(() => {
+    const actions = {
       reset() {
         clear();
         dispatch({ type: "reset" });
@@ -216,6 +244,7 @@ function useController() {
         clear("confirm");
         after("confirm", TIMING.confirmSpinner, () => {
           patch({ feedback: "confirmed", expanded: false, reasoningOpen: false });
+          dispatch({ type: "log", key: "confirm" });
           after("confirm", 260, () => toast("Marked as the root cause.", { kind: "confirm" }));
         });
       },
@@ -229,6 +258,7 @@ function useController() {
         dispatch({ type: "step", key, status: "working" });
         after("step", TIMING.actionSpinner, () => {
           dispatch({ type: "step", key, status: "done" });
+          dispatch({ type: "log", key: key as LogKey });
           toast(step.toast, { kind: "step", key });
         });
       },
@@ -243,6 +273,7 @@ function useController() {
         after("step", TIMING.actionSpinner, () => {
           patch({ dialog: null });
           dispatch({ type: "step", key: d.stepKey, status: "done" });
+          dispatch({ type: "log", key: d.stepKey as LogKey });
           after("step", 180, () => step && toast(step.toast, { kind: "step", key: d.stepKey }));
         });
       },
@@ -250,11 +281,14 @@ function useController() {
         dispatch({ type: "dismissToast", id: t.id });
         if (!t.undo) return;
         if (t.undo.kind === "confirm") {
+          // Escalate is in both step lists, so an escalation survives the undo.
           const steps = { ...ref.current.steps };
-          CONFIRMED_STEPS.forEach((s) => delete steps[s.key]);
+          CONFIRMED_ONLY.forEach((k) => delete steps[k]);
           patch({ feedback: "none", steps });
+          dispatch({ type: "unlog", keys: ["confirm", ...CONFIRMED_ONLY] });
         } else {
           dispatch({ type: "step", key: t.undo.key, status: "idle" });
+          dispatch({ type: "unlog", keys: [t.undo.key] });
         }
       },
       dismissToast(id: number) {
@@ -320,7 +354,7 @@ function useController() {
         const n = pickedMessages(s.picks).length;
         if (s.handoff !== "pick" || n === 0) return;
         clear("handoff");
-        patch({ handoff: "writing", written: 0 });
+        patch({ handoff: "writing", written: 0, handoffDraft: { log: s.log, at: clockTime(s.tick) } });
         for (let i = 0; i < n; i++) {
           after("handoff", TIMING.writeStart + i * TIMING.writeStagger, () => patch({ written: i + 1 }));
         }
@@ -333,6 +367,7 @@ function useController() {
         const names = RECIPIENTS.filter((r) => s.picks[r.key]?.length).map((r) => r.name);
         after("handoff", TIMING.actionSpinner + 180, () => {
           patch({ handoff: "sent" });
+          dispatch({ type: "log", key: "handoff" });
           after("handoff", 180, () => toast(`Handoff sent to ${names.join(" and ")}. Added to the Log.`));
         });
       },
@@ -368,13 +403,33 @@ function useController() {
         clear("chat");
         patch({ chat: "idle", typed: 0, asked: false, searchDone: 0, searchFolded: false, answerShown: 0 });
       },
-      setWhatIf(rack: number, ups: number) {
-        const w = ref.current.whatIf;
-        if (w.rack !== rack || w.ups !== ups) patch({ whatIf: { rack, ups } });
+      /* Simulate opens a cause's simulator, and a beat after the panel
+       * lands its lever glides to the recommended stop, so the odds
+       * visibly fall instead of showing Now and After as equal. */
+      toggleSim(id: Cause["id"]) {
+        const s = ref.current;
+        clear(`sim-${id}`);
+        if (s.simOpen.includes(id)) {
+          patch({ simOpen: s.simOpen.filter((x) => x !== id) });
+          return;
+        }
+        patch({ simOpen: [...s.simOpen, id] });
+        const { lever, preset } = CAUSE_ODDS[id];
+        if (lever && s.simStop[id] === 0) {
+          after(`sim-${id}`, TIMING.simPrime, () => patch({ simStop: { ...ref.current.simStop, [id]: preset } }));
+        }
       },
-    }),
-    [after, clear, patch, runAnalysis, toast],
-  );
+      openSim(id: Cause["id"]) {
+        if (!ref.current.simOpen.includes(id)) actions.toggleSim(id);
+      },
+      setSimStop(id: Cause["id"], stop: number) {
+        clear(`sim-${id}`);
+        const s = ref.current.simStop;
+        if (s[id] !== stop) patch({ simStop: { ...s, [id]: stop } });
+      },
+    };
+    return actions;
+  }, [after, clear, patch, runAnalysis, toast]);
 
   return { state, actions };
 }

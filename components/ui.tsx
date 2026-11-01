@@ -101,6 +101,7 @@ export function Button({
   children,
   className = "",
   ariaLabel,
+  ariaExpanded,
 }: {
   kind?: "primary" | "secondary" | "ghost";
   loading?: boolean;
@@ -109,6 +110,7 @@ export function Button({
   children: React.ReactNode;
   className?: string;
   ariaLabel?: string;
+  ariaExpanded?: boolean;
 }) {
   const cls = {
     primary: "bg-primary text-primary-foreground hover:bg-[#27272a]",
@@ -126,6 +128,7 @@ export function Button({
       }}
       aria-busy={loading || undefined}
       aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
       disabled={disabled}
       className={`relative inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-button px-3 text-[14px] font-medium leading-5 whitespace-nowrap transition-[background-color,opacity] duration-150 disabled:opacity-50 ${cls} ${className}`}
     >

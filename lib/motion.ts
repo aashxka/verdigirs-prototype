@@ -15,12 +15,22 @@
  *  3350   likely causes resolve out of their skeletons (staggered 260ms)
  *  4250   recommended steps settle in (staggered 90ms)
  *
- * CONFIRM CAUSE #1
+ * CONFIRM CAUSE #1  (the verdict sits after the evidence and rides
+ * the bottom of the scroll while the evidence is on screen)
  *     0   Confirm shows a spinner, Rule out dims
- *   700   detail collapses (200ms), "Confirmed by you" pops in
- *   780   other causes get "Unlikely root cause" (staggered 70ms)
- *   850   steps re-rank around cause #1
+ *   700   detail collapses (200ms), "Likely causes" → "Root cause",
+ *         rank 1 turns into a check, "Confirmed by you" pops in
+ *   700   the list parts: "Other possible causes" opens between the
+ *         halves (300ms) as their corners round off
+ *   820   the other causes' numbers roll up, 2 → 1, 3 → 2 (staggered 60ms)
+ *   850   steps re-rank: fix, escalate, watch UPS-2
  *   950   toast rises from the footer, dismisses after 5s
+ *
+ * SIMULATE (any likely cause)
+ *     0   the cause row tints and its simulator opens under the odds
+ *         block (300ms), contents fade up at +60ms
+ *   380   the lever glides to its recommended stop; After rolls down
+ *         and the projection swings toward the 15% failure line
  *
  * FOLLOW-UP QUESTION (ms after Send)
  *     0   question bubble lands; composer reads "Searching…" beside
@@ -78,6 +88,7 @@ export const TIMING = {
   causeStagger: 260,
   stepsAppear: 3500,
   confirmSpinner: 700,
+  simPrime: 380, // Simulate → lever glides to its recommended stop
   toastLife: 5000,
   actionSpinner: 520,
   typeChar: 26, // base ms per character when auto-typing

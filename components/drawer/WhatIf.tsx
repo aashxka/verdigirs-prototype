@@ -2,84 +2,147 @@
 
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef } from "react";
-import { ODDS, ODDS_NOW, PROJECTION_ANGLE, RACK_STOPS, UPS_STOPS, riskFor, type Confidence } from "@/lib/data";
+import {
+  CAUSE_ODDS,
+  ODDS_NOW,
+  RACK_STOPS,
+  UPS_STOPS,
+  angleAt,
+  oddsAt,
+  riskFor,
+  type Cause,
+  type Confidence,
+} from "@/lib/data";
 import { EASE, SPRING } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
-import { Badge, Icon } from "../ui";
+import { Badge, Button, Icon } from "../ui";
 
 /* ─────────────────────────────────────────────────────────
- * What-if / UPS-2 ripple odds (1560:5036).
- * Tap or drag a slider stop; odds digits roll and the projection
- * rotates about "Now" on the Figma spring (m1 k520 d44).
+ * What-if / UPS-2 ripple odds (1560:5036), one per likely cause.
+ * Every cause row carries an odds block: UPS-2 failure odds now,
+ * and after fixing that cause. Simulate opens the cause's own
+ * simulator under it, on that cause's lever. Tap or drag a stop;
+ * odds digits roll and the projection rotates about "Now" on the
+ * Figma spring (m1 k520 d44).
  * ───────────────────────────────────────────────────────── */
 
 const W = "/figma/whatif";
 const KNOB_RANGE = 469; // px the knob travels on a 485px track
 const NOW = { x: 84, y: 84 }; // "Now · 6%" inside the 453×120 plot
 
+/* 32px numbers keep the What-if colours; the 16px ones in the odds
+ * block use the darker critical red so they stay readable small. */
 const RISK_TEXT: Record<Confidence, string> = {
   High: "text-pastel-red",
   Medium: "text-warning-fg",
   Low: "text-verdigris-on-light",
 };
+const RISK_TEXT_SMALL: Record<Confidence, string> = {
+  High: "text-destructive",
+  Medium: "text-warning-fg",
+  Low: "text-verdigris-on-light",
+};
 const RISK_TONE: Record<Confidence, "danger" | "warning" | "teal"> = { High: "danger", Medium: "warning", Low: "teal" };
 
-export function WhatIf() {
+const LEVER_LABEL = { rack: "Move rack 14 load to PDU-02", ups: "Shift UPS-2 load to UPS-1" } as const;
+
+/* The odds block: same place in every cause row, so the after-fix
+ * numbers line up down the list and read as a column. */
+export function OddsBlock({ id, cta }: { id: Cause["id"]; cta?: { label: string; onClick: () => void } }) {
   const { state, actions } = usePrototype();
-  const { rack, ups } = state.whatIf;
-  const after = ODDS[ups][rack];
+  const { lever, preset, fix } = CAUSE_ODDS[id];
+  const after = oddsAt(lever, preset);
+  const open = state.simOpen.includes(id);
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-border bg-background py-2.5 pl-3 pr-2.5">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-[12px] font-medium leading-4 text-muted-foreground">UPS-2 failure · next 6 h</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="flex shrink-0 items-center gap-1 text-[16px] font-semibold leading-6 tabular">
+            <span className="text-destructive">{ODDS_NOW}%</span>
+            <Icon src={`${W}/arrow-right.svg`} size={14} />
+            <span className={RISK_TEXT_SMALL[riskFor(after)]}>{after}%</span>
+          </span>
+          <span className="truncate text-[12px] leading-4 text-muted-foreground">{fix}</span>
+        </span>
+      </span>
+      {cta ? (
+        <Button kind="secondary" onClick={cta.onClick}>
+          {cta.label}
+        </Button>
+      ) : (
+        <Button kind="secondary" className="min-w-[84px]" ariaExpanded={open} onClick={() => actions.toggleSim(id)}>
+          {open ? "Hide" : "Simulate"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/* The cause's simulator. Opens on the cause's lever; the store
+ * glides that lever to its recommended stop once the panel lands. */
+export function CauseSimulator({ id, open }: { id: Cause["id"]; open: boolean }) {
+  const { state, actions } = usePrototype();
+  const { lever, note } = CAUSE_ODDS[id];
+  const stop = state.simStop[id];
+  const after = oddsAt(lever, stop);
   const risk = riskFor(after);
   const delta = after - ODDS_NOW;
-  const changed = rack !== 0 || ups !== 0;
+  const changed = stop !== 0;
 
   return (
-    <section className="flex w-full flex-col items-center overflow-hidden rounded-lg border border-border bg-card p-2" aria-label="What-if: lower the odds of a UPS-2 failure">
-      <div className="flex w-full flex-col px-6 pb-2 pt-6">
-        <div className="flex w-full items-stretch gap-2">
-          <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md bg-surface-subtle p-3">
-            <span className="text-[12px] font-medium leading-4 text-muted-foreground">Now</span>
-            <span className="flex items-center justify-between">
-              <span className="text-[32px] font-semibold leading-9 tracking-[-0.64px] text-pastel-red tabular">{ODDS_NOW}%</span>
-              <Badge tone="danger">High</Badge>
+    <motion.section
+      initial={false}
+      animate={{ opacity: open ? 1 : 0, y: open ? 0 : -4 }}
+      transition={{ duration: open ? 0.26 : 0.12, ease: EASE.reveal, delay: open ? 0.06 : 0 }}
+      className="flex flex-col gap-5 pb-5 pl-12 pr-4"
+      aria-label="Simulate the UPS-2 failure odds"
+    >
+      <div className="flex w-full items-stretch gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-border bg-background p-3">
+          <span className="text-[12px] font-medium leading-4 text-muted-foreground">Now</span>
+          <span className="flex items-center justify-between">
+            <span className="text-[32px] font-semibold leading-9 tracking-[-0.64px] text-pastel-red tabular">{ODDS_NOW}%</span>
+            <Badge tone="danger">High</Badge>
+          </span>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-border bg-background p-3">
+          <span className="text-[12px] font-medium leading-4 text-foreground">After</span>
+          <span className="flex items-center justify-between" aria-live="polite">
+            <span className={`flex text-[32px] font-semibold leading-9 tracking-[-0.64px] transition-colors duration-300 ${RISK_TEXT[risk]}`}>
+              <RollingNumber value={after} />%
             </span>
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-border bg-background p-3">
-            <span className="text-[12px] font-medium leading-4 text-foreground">After</span>
-            <span className="flex items-center justify-between" aria-live="polite">
-              <span className={`flex text-[32px] font-semibold leading-9 tracking-[-0.64px] transition-colors duration-300 ${RISK_TEXT[risk]}`}>
-                <RollingNumber value={after} />%
-              </span>
-              <span className="flex items-center gap-1.5">
-                <RiskChip level={risk} />
-                <AnimatePresence initial={false}>
-                  {changed && (
-                    <motion.span
-                      initial={{ opacity: 0, scale: 0.9, filter: "blur(2px)" }}
-                      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.12 } }}
-                      transition={SPRING.pop}
-                      className="flex"
-                    >
-                      <Badge tone="teal">
-                        <span className="tabular">−{Math.abs(delta)} pts</span>
-                      </Badge>
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </span>
+            <span className="flex items-center gap-1.5">
+              <RiskChip level={risk} />
+              <AnimatePresence initial={false}>
+                {changed && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.9, filter: "blur(2px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.12 } }}
+                    transition={SPRING.pop}
+                    className="flex"
+                  >
+                    <Badge tone="teal">
+                      <span className="tabular">−{Math.abs(delta)} pts</span>
+                    </Badge>
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </span>
-          </div>
+          </span>
         </div>
       </div>
 
-      <div className="flex w-[533px] flex-col">
-        <RippleChart angle={PROJECTION_ANGLE[ups][rack]} />
-        <div className="flex flex-col gap-4 px-6 pb-6 pt-2">
+      <RippleChart angle={angleAt(lever, stop)} />
+
+      {lever ? (
+        <div className="flex flex-col gap-3">
           <div className="flex h-8 items-center justify-between">
             <h4 className="text-[14px] font-semibold leading-5 text-foreground">Lower the odds</h4>
             <motion.button
               type="button"
-              onClick={() => actions.setWhatIf(0, 0)}
+              onClick={() => actions.setSimStop(id, 0)}
               initial={false}
               animate={{ opacity: changed ? 1 : 0, pointerEvents: changed ? "auto" : "none" }}
               transition={{ duration: 0.18, ease: EASE.snap }}
@@ -91,29 +154,25 @@ export function WhatIf() {
               Reset
             </motion.button>
           </div>
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
             <StopSlider
-              label="Move rack 14 load to PDU-02"
-              stops={RACK_STOPS}
-              value={rack}
-              onChange={(v) => actions.setWhatIf(v, ups)}
+              label={LEVER_LABEL[lever]}
+              stops={lever === "rack" ? RACK_STOPS : UPS_STOPS}
+              value={stop}
+              onChange={(v) => actions.setSimStop(id, v)}
             />
-            <div className="flex flex-col gap-2">
-              <StopSlider
-                label="Shift UPS-2 load to UPS-1"
-                stops={UPS_STOPS}
-                value={ups}
-                onChange={(v) => actions.setWhatIf(rack, v)}
-              />
+            {lever === "ups" && (
               <p className="text-[12px] leading-4 text-muted-foreground">
-                {UPS_STOPS[ups].note}
-                {UPS_STOPS[ups].risk && <span className="text-warning-fg"> · {UPS_STOPS[ups].risk}</span>}
+                {UPS_STOPS[stop].note}
+                {UPS_STOPS[stop].risk && <span className="text-warning-fg"> · {UPS_STOPS[stop].risk}</span>}
               </p>
-            </div>
+            )}
           </div>
         </div>
-      </div>
-    </section>
+      ) : (
+        <p className="text-pretty text-[14px] leading-5 text-muted-foreground">{note}</p>
+      )}
+    </motion.section>
   );
 }
 
@@ -187,7 +246,7 @@ function RippleChart({ angle }: { angle: number }) {
     { t: "20:00", left: 449 },
   ];
   return (
-    <div className="flex flex-col gap-3 p-6">
+    <div className="flex flex-col gap-3">
       <span className="text-[12px] font-medium leading-4 text-muted-foreground">UPS-2 ripple</span>
       <div className="relative h-[148px] w-full overflow-hidden" role="img" aria-label="UPS-2 ripple: today, projection and the Mar 14 failure path">
         {ticks.map((t) => (

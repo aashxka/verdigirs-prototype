@@ -76,14 +76,16 @@ export const REASONING = {
     { result: "supported", title: "Phase A THDi crossed the 5% limit at 12:24", body: "Rose from 3% to 180% in 8 min. Phases B and C stayed under 6%." },
     { result: "supported", title: "Rack 14 powered on 12 servers at 12:22", body: "Change CHG-2291 started 2 min before the rise. Timing matches within 40s." },
     { result: "checked", title: "Compared with 14 past incidents on this panel", body: "2 matched this harmonic pattern; both traced to new switch-mode PSU loads." },
-    { result: "ruled-out", title: "UPS-2 rectifier wear is less likely", body: "Ripple rose 4%, below the 15% seen in capacitor failures. Kept as cause #2." },
+    { result: "ruled-out", title: "UPS-2 rectifier wear is less likely", body: "Ripple rose 4%, below the 15% seen in capacitor failures. Kept as a possible cause." },
     { result: "ruled-out", title: "Ambient temperature", body: "Room held 22–23 °C; no thermal correlation." },
   ],
 } as const;
 
 /* Recommended steps. Before a cause is confirmed the Assistant
- * suggests triage (DS: RCA – Results); once cause #1 is confirmed
- * the steps re-rank around it (02.6). */
+ * suggests triage (DS: RCA – Results). Once cause #1 is confirmed
+ * there is nothing left to verify, so the steps turn to the fix,
+ * keep the escalation (the UPS-2 risk hasn't changed), and watch
+ * the UPS-2 rectifier that the harmonics are wearing down. */
 export type Step = {
   key: string;
   title: string;
@@ -96,6 +98,16 @@ export type Step = {
   opensDialog?: boolean;
 };
 
+const ESCALATE: Step = {
+  key: "escalate",
+  title: "Escalate to facilities lead",
+  body: "UPS-2 has a 76% chance of failing in the next 6 h if the load stays.",
+  cta: "Escalate",
+  ctaKind: "secondary",
+  done: "Escalated",
+  toast: "Escalated to the facilities lead",
+};
+
 export const TRIAGE_STEPS: Step[] = [
   {
     key: "task",
@@ -106,34 +118,25 @@ export const TRIAGE_STEPS: Step[] = [
     done: "Task T-2214 created",
     toast: "Task T-2214 created for the rack 14 inspection",
   },
-  {
-    key: "escalate",
-    title: "Escalate to facilities lead",
-    tag: "Optional",
-    body: "Equipment downstream is at risk in 4–6 hrs if the load stays",
-    cta: "Escalate",
-    ctaKind: "secondary",
-    done: "Escalated",
-    toast: "Escalated to the facilities lead",
-  },
+  ESCALATE,
 ];
 
 export const CONFIRMED_STEPS: Step[] = [
   {
-    key: "inspect-rack",
-    title: "Inspect non-linear loads on rack 14",
-    body: "5-min on-site check. Verifies cause #1.",
-    cta: "Schedule",
+    key: "move-load",
+    title: "Move rack 14 load to PDU-02",
+    body: "Brings Phase A THDi under 5%. UPS-2 failure odds drop from 76% to 12%.",
+    cta: "Create work order",
     ctaKind: "primary",
-    done: "Scheduled · Tue 09:00",
-    toast: "Maintenance scheduled with Marco Diaz for Tue, Oct 20, 09:00–10:30",
-    opensDialog: true,
+    done: "WO-1182 created",
+    toast: "Work order WO-1182 created to move rack 14 load to PDU-02",
   },
+  ESCALATE,
   {
     key: "inspect-ups",
     title: "Inspect UPS-2 rectifier",
     tag: "Optional",
-    body: "Checks cause #2. Marco Diaz is free Tue 09:00.",
+    body: "Rack 14’s harmonics are wearing its capacitors. Marco Diaz is free Tue 09:00.",
     cta: "Schedule",
     ctaKind: "secondary",
     done: "Scheduled · Tue 09:00",
@@ -142,14 +145,12 @@ export const CONFIRMED_STEPS: Step[] = [
   },
 ];
 
+/* Steps that only exist once a cause is confirmed (undo clears these). */
+export const CONFIRMED_ONLY = CONFIRMED_STEPS.filter((s) => !TRIAGE_STEPS.includes(s)).map((s) => s.key);
+
 export const SCHEDULE_DIALOG: Record<string, { subtitle: string; instructions: string }> = {
-  "inspect-rack": {
-    subtitle: "Inspect non-linear loads on rack 14 · confirms cause #1",
-    instructions:
-      "Check the 12 new servers on rack 14 for non-linear load switching. Measure Phase A THDi at the rack PDU. Compare with change CHG-2291.",
-  },
   "inspect-ups": {
-    subtitle: "Inspect UPS-2 rectifier · checks cause #2",
+    subtitle: "Inspect UPS-2 rectifier · capacitor wear",
     instructions:
       "Check the UPS-2 rectifier capacitor bank for wear. Measure ripple on UPS-2 and compare with incident #482.",
   },
@@ -159,7 +160,7 @@ export const SCHEDULE_DIALOG: Record<string, { subtitle: string; instructions: s
 export const QUESTION = "Why is UPS-2 capacitor wear only Medium? Any related causes?";
 
 export const SEARCH_STEPS = [
-  { label: "Read the evidence for cause #2", time: "0.6s" },
+  { label: "Read the evidence for UPS-2 capacitor wear", time: "0.6s" },
   { label: "Searched 14 past incidents on this panel", active: "Searching 14 past incidents on this panel", time: "2.1s" },
   { label: "Compared with today’s readings", active: "Comparing with today’s readings", time: "1.5s" },
 ] as const;
@@ -167,12 +168,12 @@ export const SEARCH_STEPS = [
 export const SEARCH_SUMMARY = "Checked 14 past incidents and the UPS-2 waveform";
 
 export const ANSWER = {
-  leadTitle: "Capacitor wear doesn’t explain the 12:24 spike",
-  leadBody: "Rack 14 powering on does (cause #1). UPS-2 ripple is only 6%; failures start at 15%.",
-  relatedTitle: "Cause #1 is speeding up the wear",
+  leadTitle: "Capacitor wear doesn’t explain the 12:30 spike",
+  leadBody: "Rack 14 powering on does. UPS-2 ripple is only 6%; failures start at 15%.",
+  relatedTitle: "Rack 14’s harmonics are speeding up the wear",
   related: [
-    { rank: 1, cause: "Non-linear load switching", linked: true, note: "Its harmonics heat UPS-2’s capacitors.", source: "PDU-01-A9F sensor" },
-    { rank: 3, cause: "Phase A load imbalance", linked: false, note: "Started 3 days before the spike.", source: "Panel B sensor" },
+    { rank: 1 as const, cause: "Non-linear load switching", linked: true, note: "Its harmonics heat UPS-2’s capacitors.", source: "PDU-01-A9F sensor" },
+    { rank: 3 as const, cause: "Phase A load imbalance", linked: false, note: "Started 3 days before the spike.", source: "Panel B sensor" },
   ],
   pastTitle: "Today matches Mar 14, when UPS-2 failed",
   match: [
@@ -225,11 +226,42 @@ export function riskFor(odds: number): Confidence {
   return "Low";
 }
 
+/* UPS-2 failure odds per likely cause: where they stand now, and
+ * what fixing that cause does to them. #1 and #2 each own one lever
+ * of the what-if, and their Simulate opens on that lever's
+ * recommended stop (all of rack 14's 3.8 kW; 15% of UPS-2's load,
+ * which keeps N+1). The follow-up found #3 isn't linked to UPS-2
+ * wear, so fixing it leaves the odds where they are. */
+export type Lever = "rack" | "ups";
+export type CauseOdds = { lever: Lever | null; preset: number; fix: string; note?: string };
+
+export const CAUSE_ODDS: Record<Cause["id"], CauseOdds> = {
+  1: { lever: "rack", preset: 3, fix: "if rack 14’s load moves to PDU-02" },
+  2: { lever: "ups", preset: 1, fix: "if 15% of UPS-2’s load shifts to UPS-1" },
+  3: {
+    lever: null,
+    preset: 0,
+    fix: "not linked to UPS-2 wear",
+    note: "Panel B’s imbalance started 3 days before the spike and isn’t linked to UPS-2 wear, so fixing it doesn’t move these odds.",
+  },
+};
+
+export function oddsAt(lever: Lever | null, stop: number) {
+  return lever === "rack" ? ODDS[0][stop] : lever === "ups" ? ODDS[stop][0] : ODDS_NOW;
+}
+
+export function angleAt(lever: Lever | null, stop: number) {
+  return lever === "rack" ? PROJECTION_ANGLE[0][stop] : lever === "ups" ? PROJECTION_ANGLE[stop][0] : PROJECTION_ANGLE[0][0];
+}
+
 /* ─────────────────────────────────────────────────────────
- * Handoff (04 · Handoff, 09.1–09.3). Facts follow the 09.2
- * draft. Each person gets their own channels, and each
- * message is written for that reader: steps and timestamps
- * for the next tech, outcome and next step for leadership.
+ * Handoff (04 · Handoff, 09.1–09.3). Layout follows the 09.2
+ * draft, but the facts come from this session's Log: the alert
+ * is still open at handoff, so each message says what was done,
+ * what is still open, and what to watch. Each person gets their
+ * own channels, and each message is written for that reader:
+ * steps and timestamps for the next tech, plan and risk for
+ * leadership.
  * ───────────────────────────────────────────────────────── */
 export type ChannelKey = "servicenow" | "slack" | "sms";
 export type PersonKey = "tech" | "lead";
@@ -239,16 +271,42 @@ export type HandoffMessage =
   | { kind: "slack"; title: string; sections: { label: string; text: string }[]; link?: string }
   | { kind: "sms"; text: string };
 
-export type Channel = { key: ChannelKey; label: string; to: string; message: HandoffMessage };
+export type Channel = { key: ChannelKey; label: string; to: string; write: (log: LogItem[]) => HandoffMessage };
 export type Recipient = { key: PersonKey; audience: string; name: string; channels: Channel[] };
 
 export const HANDOFF = {
   intro: "Pick who it’s for and where to send it. Each message is written from the Log for its reader.",
-  source: "From 6 Log entries, 12:24–14:12",
-  sentAt: "14:25",
   disclaimer: "AI-drafted from the Log. Review before you send.",
   placeholder: "Ask about this handoff…",
 };
+
+/* What each Log event reads as in a handoff, in the sender's voice. */
+const DID: Record<Exclude<LogKey, "handoff">, string> = {
+  analysis: "Ran the root cause analysis",
+  confirm: "Confirmed rack 14’s new servers as the cause",
+  task: "Opened T-2214 to inspect rack 14",
+  escalate: "Escalated to Jordan Lee",
+  "move-load": "Opened WO-1182 to move rack 14 load to PDU-02",
+  "inspect-ups": "Booked the UPS-2 inspection for Tue 09:00",
+};
+
+function did(log: LogItem[]) {
+  return log.flatMap((e) => (e.key === "handoff" ? [] : [{ time: e.time, text: DID[e.key] }]));
+}
+
+function stillOpen(log: LogItem[]) {
+  const has = (k: LogKey) => log.some((e) => e.key === k);
+  return [
+    !has("confirm") && "Confirm the root cause",
+    has("move-load") ? "Move rack 14 load to PDU-02 (WO-1182)" : "Move rack 14 load to PDU-02",
+    has("task") && "T-2214: inspect rack 14",
+    has("inspect-ups") && "UPS-2 rectifier inspection, Tue 09:00",
+  ].filter((x): x is string => !!x);
+}
+
+const confirmed = (log: LogItem[]) => log.some((e) => e.key === "confirm");
+const sentence = (parts: string[]) => parts.join(". ") + ".";
+const WATCH = `UPS-2 has a ${ODDS_NOW}% chance of failing in the next 6 h while the load stays.`;
 
 export const RECIPIENTS: Recipient[] = [
   {
@@ -260,53 +318,50 @@ export const RECIPIENTS: Recipient[] = [
         key: "servicenow",
         label: "ServiceNow",
         to: "T-2214 work notes",
-        message: {
+        write: (log) => ({
           kind: "ticket",
           title: "Shift handoff: PDU-01-A9F harmonic alert",
           fields: [
-            { label: "Status", value: "Resolved. Watching PDU-02." },
-            { label: "Root cause", value: "Rack 14’s 12 new servers pushed Phase A THDi to 180% at 12:24." },
+            { label: "Status", value: "Open. Phase A THDi is still above the 5% limit." },
             {
-              label: "Actions",
-              value: [
-                { time: "12:40", text: "Opened T-2214 to inspect rack 14" },
-                { time: "13:02", text: "Escalated to Jordan Lee" },
-                { time: "13:58", text: "Moved rack 14 to PDU-02 · WO-1182" },
-                { time: "14:10", text: "Sensor confirmed THDi at 4.2%" },
-              ],
+              label: "Root cause",
+              value: confirmed(log)
+                ? "Rack 14’s 12 new servers pushed Phase A THDi to 180% by 12:30."
+                : "Not confirmed yet. Most likely rack 14’s 12 new servers (High).",
             },
-            { label: "Still open", value: "UPS-2 rectifier inspection, Tue 09:00" },
-            { label: "Watch", value: "PDU-02 load, now 70%" },
+            { label: "Actions", value: did(log).length ? did(log) : "None yet." },
+            { label: "Still open", value: sentence(stillOpen(log)) },
+            { label: "Watch", value: WATCH },
           ],
-        },
+        }),
       },
       {
         key: "slack",
         label: "Slack",
         to: "#sjc-night-shift",
-        message: {
+        write: (log) => ({
           kind: "slack",
-          title: "Handoff: PDU-01-A9F harmonic alert (resolved)",
+          title: "Handoff: PDU-01-A9F harmonic alert (still open)",
           sections: [
-            { label: "What happened:", text: "Phase A THDi hit 180% at 12:24 after rack 14’s 12 new servers came online." },
+            { label: "What happened:", text: "Phase A THDi hit 180% by 12:30 after rack 14’s 12 new servers came online at 12:22." },
             {
               label: "What I did:",
-              text: "Created task T-2214 to inspect rack 14 (12:40). Escalated to Jordan Lee (13:02). Moved rack 14 to PDU-02, WO-1182 (13:58). Sensor confirmed 4.2% at 14:10.",
+              text: did(log).length ? sentence(did(log).map((a) => `${a.text} (${a.time})`)) : "Nothing yet.",
             },
-            { label: "Still open:", text: "UPS-2 rectifier inspection, Tue 09:00." },
-            { label: "Watch:", text: "PDU-02 load, now 70%." },
+            { label: "Still open:", text: sentence(stillOpen(log)) },
+            { label: "Watch:", text: WATCH },
           ],
           link: "See full analysis",
-        },
+        }),
       },
       {
         key: "sms",
         label: "SMS",
         to: "Ana Ruiz",
-        message: {
+        write: (log) => ({
           kind: "sms",
-          text: "SJC handoff: PDU-01-A9F alert resolved. Rack 14 moved to PDU-02 (WO-1182), THDi now 4.2%. Still open: UPS-2 inspection Tue 09:00. Details: sig.nl/a/8F2",
-        },
+          text: `SJC handoff: PDU-01-A9F alert still open. Cause: rack 14’s new servers${confirmed(log) ? "" : " (likely)"}. First: move rack 14 load to PDU-02. UPS-2 at ${ODDS_NOW}% failure risk in 6 h. Details: sig.nl/a/8F2`,
+        }),
       },
     ],
   },
@@ -319,24 +374,28 @@ export const RECIPIENTS: Recipient[] = [
         key: "slack",
         label: "Slack",
         to: "Jordan Lee",
-        message: {
-          kind: "slack",
-          title: "SJC: PDU-01-A9F alert is resolved",
-          sections: [
-            { label: "What happened:", text: "New servers on rack 14 overloaded Phase A at 12:24." },
-            { label: "Fix:", text: "The team moved rack 14 to PDU-02. Readings were back under the limit by 14:10." },
-            { label: "Next:", text: "UPS-2 rectifier inspection, Tue 09:00." },
-          ],
+        write: (log) => {
+          const booked = stillOpen(log).filter((x) => x.endsWith("Tue 09:00"));
+          return {
+            kind: "slack",
+            title: "SJC: PDU-01-A9F alert is still open",
+            sections: [
+              { label: "What happened:", text: "New servers on rack 14 overloaded Phase A at 12:24." },
+              { label: "Plan:", text: "Ana Ruiz moves rack 14 load to PDU-02 at the start of the next shift." },
+              { label: "Risk:", text: `UPS-2 has a ${ODDS_NOW}% chance of failing in the next 6 h until the load moves.` },
+              ...(booked.length ? [{ label: "Next:", text: sentence(booked) }] : []),
+            ],
+          };
         },
       },
       {
         key: "sms",
         label: "SMS",
         to: "Jordan Lee",
-        message: {
+        write: () => ({
           kind: "sms",
-          text: "SJC update: PDU-01-A9F alert resolved at 14:10. Cause: rack 14’s new servers. Load moved to PDU-02, now at 70%. Next: UPS-2 inspection Tue 09:00. sig.nl/a/8F2",
-        },
+          text: `SJC update: PDU-01-A9F alert still open. Cause: rack 14’s new servers. Plan: move the load to PDU-02 at the start of the next shift. UPS-2 at ${ODDS_NOW}% failure risk until then. sig.nl/a/8F2`,
+        }),
       },
     ],
   },
@@ -472,13 +531,18 @@ export function formatIssueDate(iso: string) {
 }
 
 /* ─────────────────────────────────────────────────────────
- * Log (03 · Log, 08.1). Read-only timeline of the alert,
- * newest first. The entries are the 7 the 09.2 handoff draft
- * lists, so the Log and the Handoff tell the same story
- * (Handoff writes from 6 of them, 12:24–14:12). Layout and
- * entry anatomy follow the DS "Log item" (1424:4491).
+ * Log (03 · Log, 08.1). The alert's timeline, newest first.
+ * It opens with the alert itself; everything after that is
+ * written by what happens in this session (the analysis, your
+ * confirm, tasks, escalation, bookings, the handoff), so the
+ * Log never claims more than the Root cause tab shows. "Now"
+ * is 13:30, the end of the analysed window; each event moves
+ * the clock on 2 min. Layout and entry anatomy follow the DS
+ * "Log item" (1424:4491).
  * ───────────────────────────────────────────────────────── */
 export type LogEntry = { id: string; time: string; title: string; body: string; who: string; ai?: boolean };
+export type LogKey = "analysis" | "confirm" | "task" | "escalate" | "move-load" | "inspect-ups" | "handoff";
+export type LogItem = { key: LogKey; time: string };
 
 export const LOG = {
   intro: "Every action on this alert, by people and the Assistant.",
@@ -487,52 +551,15 @@ export const LOG = {
   placeholder: "Ask about what happened on this alert…",
 };
 
-export const LOG_ENTRIES: LogEntry[] = [
-  {
-    id: "confirmed",
-    time: "14:12",
-    title: "Root cause confirmed",
-    body: "Non-linear load switching from rack 14’s new servers.",
-    who: "You",
-  },
-  {
-    id: "verified",
-    time: "14:10",
-    title: "Fix verified",
-    body: "Phase A THDi is down to 4.2%, under the 5% limit. PDU-02 is at 70%.",
-    who: "Signals Assistant · sensor check",
-    ai: true,
-  },
-  {
-    id: "applied",
-    time: "13:58",
-    title: "Fix applied",
-    body: "Moved rack 14 to PDU-02 under WO-1182.",
-    who: "You",
-  },
-  {
-    id: "rerun",
-    time: "13:20",
-    title: "Analysis re-run",
-    body: "Widened the data window to 24 hours.",
-    who: "Signals Assistant",
-    ai: true,
-  },
-  {
-    id: "escalated",
-    time: "13:02",
-    title: "Alert escalated",
-    body: "Sent to Jordan Lee, facilities lead.",
-    who: "You",
-  },
-  {
-    id: "task",
-    time: "12:40",
-    title: "Task created",
-    body: "T-2214: inspect non-linear loads on rack 14.",
-    who: "Signals Assistant · approved by you",
-    ai: true,
-  },
+export const LOG_CLOCK = { start: 13 * 60 + 30, step: 2 };
+
+export function clockTime(tick: number) {
+  const m = LOG_CLOCK.start + tick * LOG_CLOCK.step;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+/* Before the session: the alert. */
+export const LOG_SEED: LogEntry[] = [
   {
     id: "raised",
     time: "12:24",
@@ -541,3 +568,40 @@ export const LOG_ENTRIES: LogEntry[] = [
     who: "Signals · automatic detection",
   },
 ];
+
+/* Session events. "handoff" is written from what was sent (LogPanel). */
+export const LOG_EVENTS: Record<Exclude<LogKey, "handoff">, Omit<LogEntry, "id" | "time">> = {
+  analysis: {
+    title: "Root cause analysis",
+    body: "Ranked 3 likely causes. Top: non-linear load switching on PDU-01-A9F (High).",
+    who: "Signals Assistant · started by you",
+    ai: true,
+  },
+  confirm: {
+    title: "Root cause confirmed",
+    body: "Non-linear load switching from rack 14’s new servers.",
+    who: "You",
+  },
+  task: {
+    title: "Task created",
+    body: "T-2214: inspect non-linear loads on rack 14.",
+    who: "Signals Assistant · approved by you",
+    ai: true,
+  },
+  escalate: {
+    title: "Alert escalated",
+    body: "Sent to Jordan Lee, facilities lead.",
+    who: "You",
+  },
+  "move-load": {
+    title: "Work order created",
+    body: "WO-1182: move rack 14 load to PDU-02.",
+    who: "Signals Assistant · approved by you",
+    ai: true,
+  },
+  "inspect-ups": {
+    title: "Inspection scheduled",
+    body: "UPS-2 rectifier, with Marco Diaz, Tue 09:00.",
+    who: "You",
+  },
+};

@@ -12,6 +12,7 @@ import { RecommendedSteps } from "./Steps";
 export function RcaPanel() {
   const { state } = usePrototype();
   const tracing = !state.traceFolded;
+  const confirmed = state.feedback === "confirmed";
   return (
     <div className="flex w-full flex-col">
       <Collapse open={tracing} inMs={300} outMs={260}>
@@ -28,7 +29,19 @@ export function RcaPanel() {
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="flex-1 text-[16px] font-semibold leading-6 text-foreground">Likely causes</h3>
+          <h3 className="flex flex-1 text-[16px] font-semibold leading-6 text-foreground">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={confirmed ? "root" : "likely"}
+                initial={{ opacity: 0, filter: "blur(3px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, filter: "blur(3px)" }}
+                transition={{ duration: 0.2, ease: EASE.snap }}
+              >
+                {confirmed ? "Root cause" : "Likely causes"}
+              </motion.span>
+            </AnimatePresence>
+          </h3>
           <AnimatePresence>
             {state.causesShown > 0 && (
               <motion.span

@@ -2,17 +2,23 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
-import { HANDOFF, RECIPIENTS, type Channel, type HandoffMessage, type Recipient } from "@/lib/data";
+import { HANDOFF, LOG_SEED, RECIPIENTS, type Channel, type HandoffMessage, type Recipient } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { pickedMessages, usePrototype } from "@/lib/store";
 import { Badge, Button, Checkbox, Collapse, Icon, Spinner } from "../ui";
 
 /* Handoff tab (04 · Handoff). Pick people → pick their channels →
  * Generate writes one message per channel, each for its reader →
- * Send. Scripted: every message is predefined in lib/data. */
+ * Send. Scripted: each message is a template in lib/data, filled
+ * from the Log as it stood when Generate was pressed. */
 export function HandoffPanel() {
   const { state, actions } = usePrototype();
   const messages = pickedMessages(state.picks);
+  const draftLog = state.handoffDraft?.log ?? state.log;
+  const writtenAt = state.handoffDraft?.at ?? "";
+  const sentAt = state.log.find((e) => e.key === "handoff")?.time;
+  const sourceCount = LOG_SEED.length + draftLog.length;
+  const source = `From ${sourceCount} Log ${sourceCount === 1 ? "entry" : "entries"}, ${LOG_SEED[0].time}–${draftLog.at(-1)?.time ?? LOG_SEED[0].time}`;
   const n = messages.length;
   const phase = state.handoff;
   const showMessages = phase !== "pick";
@@ -82,7 +88,7 @@ export function HandoffPanel() {
                     Writing from the Log
                   </>
                 ) : (
-                  HANDOFF.source
+                  source
                 )}
               </span>
             </div>
@@ -91,6 +97,8 @@ export function HandoffPanel() {
                 key={`${recipient.key}-${channel.key}`}
                 recipient={recipient}
                 channel={channel}
+                message={channel.write(draftLog)}
+                writtenAt={writtenAt}
                 written={state.written > i}
                 sent={phase === "sent"}
                 index={i}
@@ -111,7 +119,7 @@ export function HandoffPanel() {
               className="flex items-center gap-2 text-[14px] font-medium leading-5 text-foreground"
             >
               <Icon src="/figma/cause/circle-check.svg" size={16} />
-              Sent at {HANDOFF.sentAt}
+              Sent at {sentAt}
             </motion.p>
           ) : phase === "ready" || phase === "sending" ? (
             <motion.span key="send" initial={{ opacity: 0, filter: "blur(3px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0, transition: { duration: 0.12 } }}>
@@ -194,12 +202,16 @@ function ChannelChip({ label, checked, disabled, onClick }: { label: string; che
 function MessageCard({
   recipient,
   channel,
+  message,
+  writtenAt,
   written,
   sent,
   index,
 }: {
   recipient: Recipient;
   channel: Channel;
+  message: HandoffMessage;
+  writtenAt: string;
   written: boolean;
   sent: boolean;
   index: number;
@@ -242,11 +254,11 @@ function MessageCard({
               animate="shown"
               variants={{ hidden: {}, shown: { transition: { staggerChildren: 0.07 } } }}
             >
-              <MessageBody message={channel.message} />
+              <MessageBody message={message} writtenAt={writtenAt} />
             </motion.div>
           ) : (
             <motion.div key="skeleton" exit={{ opacity: 0, transition: { duration: 0.12 } }} className="flex flex-col gap-2 py-1" aria-hidden>
-              {SKELETON[channel.message.kind].map((w, i) => (
+              {SKELETON[message.kind].map((w, i) => (
                 <span key={i} className="shimmer block h-3 rounded-[4px]" style={{ width: w }} />
               ))}
             </motion.div>
@@ -269,7 +281,13 @@ const line = {
   shown: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: DUR.reveal, ease: EASE.reveal } },
 };
 
-function MessageBody({ message }: { message: HandoffMessage }) {
+/* Slack shows its own 12-hour clock: "13:38" → "1:38 PM". */
+function slackTime(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+function MessageBody({ message, writtenAt }: { message: HandoffMessage; writtenAt: string }) {
   if (message.kind === "ticket") {
     return (
       <div className="flex flex-col gap-3 text-[14px] leading-5">
@@ -307,7 +325,7 @@ function MessageBody({ message }: { message: HandoffMessage }) {
         <motion.div variants={line} className="flex items-center gap-1.5">
           <span className="text-[15px] font-bold leading-5 text-foreground">Signals Assistant</span>
           <span className="rounded-[4px] bg-secondary px-1 text-[11px] font-bold leading-4 text-muted-foreground">APP</span>
-          <span className="text-[12px] leading-4 text-muted-foreground">2:25 PM</span>
+          <span className="text-[12px] leading-4 text-muted-foreground">{writtenAt && slackTime(writtenAt)}</span>
         </motion.div>
         <div className="flex flex-col gap-3 text-[14px] leading-[21px] text-foreground">
           <motion.p variants={line} className="text-[15px] font-bold">

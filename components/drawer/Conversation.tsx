@@ -4,15 +4,29 @@ import { AnimatePresence, motion } from "motion/react";
 import { ANSWER, QUESTION, SEARCH_STEPS, SEARCH_SUMMARY } from "@/lib/data";
 import { DUR, EASE, resolveIn } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
-import { Badge, Icon, Rank, SearchLoader, SourceChip } from "../ui";
-import { WhatIf } from "./WhatIf";
+import { Badge, Icon, SearchLoader, SourceChip } from "../ui";
+import { CauseRank } from "./Causes";
+import { OddsBlock } from "./WhatIf";
 
 /* Follow-up exchange (05 · Ask a follow-up, 10.3 → 10.6).
  * Scripted: the answer is predefined, nothing calls a model. */
 export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElement> }) {
-  const { state } = usePrototype();
+  const { state, actions } = usePrototype();
   if (!state.asked) return null;
   const shown = state.answerShown;
+
+  // The simulator lives on the cause itself: open it there and bring it into view.
+  const simulateRoot = () => {
+    actions.openSim(1);
+    requestAnimationFrame(() => {
+      const el = document.getElementById("cause-1");
+      const sc = el?.closest<HTMLElement>(".scroll-quiet");
+      if (!el || !sc) return;
+      const scale = sc.getBoundingClientRect().height / sc.offsetHeight || 1;
+      const top = (el.getBoundingClientRect().top - sc.getBoundingClientRect().top) / scale + sc.scrollTop;
+      sc.scrollTo({ top: Math.max(0, top - 16), behavior: "smooth" });
+    });
+  };
   return (
     <div className="flex min-h-[640px] w-full flex-col gap-4 pt-6">
       <motion.div
@@ -47,7 +61,7 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
                 <div className="overflow-hidden rounded-lg border border-border bg-background">
                   {ANSWER.related.map((r, i) => (
                     <div key={r.rank} className={`flex items-start gap-3 p-4 ${i < ANSWER.related.length - 1 ? "border-b border-border" : ""}`}>
-                      <Rank n={r.rank} />
+                      <CauseRank id={r.rank} />
                       <span className="flex min-w-0 flex-1 flex-col gap-2">
                         <span className="flex flex-col gap-1 text-[14px] leading-5">
                           <span className="font-medium text-foreground">{r.cause}</span>
@@ -99,7 +113,10 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
           {shown >= 4 && (
             <Block key="whatif">
               <Section title={ANSWER.whatIfTitle}>
-                <WhatIf />
+                <OddsBlock
+                  id={1}
+                  cta={{ label: state.feedback === "confirmed" ? "Simulate on root cause" : "Simulate on cause #1", onClick: simulateRoot }}
+                />
               </Section>
             </Block>
           )}
