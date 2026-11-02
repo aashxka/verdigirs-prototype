@@ -44,7 +44,7 @@ const BEAM_CSS = `
 }
 `;
 
-/* Chat composer (1363:9234): Disabled → Default → Asking → Searching.
+/* Chat composer (1363:9234): Disabled → Default → Asking → Thinking.
  * Nothing is typed here: a line pointed at and asked about (AskLine)
  * lands as a quote chip and sends itself; Enter or Send sends it now. */
 export function Composer() {
@@ -115,7 +115,7 @@ export function Composer() {
             ) : searching ? (
               <motion.span key="searching" {...swap} className="flex items-center gap-2 text-muted-foreground [grid-area:1/1]">
                 <SearchLoader size={24} />
-                Searching…
+                Thinking…
               </motion.span>
             ) : (
               <motion.span key="placeholder" {...swap} className={`truncate [grid-area:1/1] ${disabled ? "text-subtle-foreground" : "text-muted-foreground"}`}>
@@ -142,11 +142,23 @@ function QuoteIcon() {
   );
 }
 
+/* Lucide corner-down-left, the Enter key's arrow, at 16px with the
+ * drawer icons' 1.33px stroke. */
+function EnterIcon({ className }: { className: string }) {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+      <path d="m9 10-5 5 5 5" />
+    </svg>
+  );
+}
+
 function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; onSend: () => void; onStop: () => void }) {
   const stop = mode === "stop";
   return (
-    /* No surface in any state: the icon alone carries it. Grey at rest,
-     * verdigris when there's a question to send or a search to stop. */
+    /* No surface in any state: the icon alone carries it. An Enter
+     * arrow (↵), grey at rest, verdigris when there's a question to
+     * send or a search to stop. */
     <motion.button
       type="button"
       aria-label={stop ? "Stop" : "Send"}
@@ -179,7 +191,7 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
             transition={{ duration: DUR.normal, ease: EASE.reveal }}
             className="flex"
           >
-            <Icon src={mode === "send" ? "/figma/drawer/send-green.svg" : "/figma/drawer/send.svg"} size={16} />
+            <EnterIcon className={mode === "send" ? "text-verdigris-on-light" : "text-subtle-foreground"} />
           </motion.span>
         )}
       </AnimatePresence>

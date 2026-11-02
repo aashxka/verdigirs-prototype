@@ -22,8 +22,6 @@ const TABS: { label: string; tab: Tab }[] = [
 
 const DRAWER_W = 600;
 const FULL_W = DRAWER_W + SIDE_W;
-// Closed: the thinking link's right edge, 16px before the close button (header pr-4, size-8).
-const LINK_END = DRAWER_W - 16 - 32 - 16;
 
 /* Assistant drawer: non-modal, 600px, slides over the alert page.
  * Simulate and Recommend actions widen it leftward by SIDE_W: the
@@ -32,8 +30,8 @@ const LINK_END = DRAWER_W - 16 - 32 - 16;
  * panel belongs to Root cause, so other tabs narrow it back.
  * The drawer is always FULL_W wide and only moves (transform only,
  * per the DS): narrow, its side-panel half waits past the right edge
- * of the window, and the close button is held back by the same
- * amount so it never moves. */
+ * of the window, and the header actions (thinking link, close) are
+ * held back by the same amount so they never move. */
 export function AssistantDrawer() {
   const { state, actions } = usePrototype();
   const open = state.drawer === "open";
@@ -87,38 +85,24 @@ export function AssistantDrawer() {
     >
       <header className="relative flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
         <h2 className="flex-1 text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
-        {/* The thinking link, always on the header's line (Root cause
-            only). It belongs to the side panel, so it rides with it:
-            closed, its right edge sits 16px before the close button;
-            open, it travels with the sheet to the panel's 24px content
-            inset. The anchor moves on the drawer's own spring and the
-            link shifts from right- to left-aligned (−100% → 0) on the
-            same spring, so no width is measured. Show opens or switches
-            to Thinking; Hide goes back to the boxes, or closes the panel.
-            top 22px puts its baseline on the title's. */}
-        <motion.div
-          className={`absolute left-0 top-[22px] transition-opacity duration-200 ${state.tab === "rca" ? "opacity-100" : "pointer-events-none opacity-0"}`}
-          aria-hidden={state.tab !== "rca"}
-          initial={false}
-          animate={{ x: extended ? DRAWER_W + 24 : LINK_END }}
-          transition={slide}
-        >
-          <motion.button
+        {/* Header actions, held at the window's right edge as the drawer
+            widens. The thinking link (Root cause only) sits beside the
+            close button: gap-2 (8px) plus the button's 8px inset puts
+            16px between its text and the X, on the DS 4px grid. Show
+            opens or switches to Thinking; Hide goes back to the boxes,
+            or closes the panel. */}
+        <motion.div className="flex items-center gap-2" initial={false} animate={{ x: -tuck }} transition={slide}>
+          <button
             type="button"
-            onClick={state.thinking ? actions.hideThinking : actions.showThinking}
+            onClick={() => (state.thinking ? actions.hideThinking() : actions.showThinking())}
             disabled={state.analysis !== "done"}
-            tabIndex={state.tab === "rca" ? undefined : -1}
+            hidden={state.tab !== "rca"}
             aria-pressed={state.thinking}
             aria-controls="assistant-side-panel"
-            initial={false}
-            animate={{ x: extended ? "0%" : "-100%" }}
-            transition={slide}
-            className="type-label block whitespace-nowrap text-verdigris-on-light underline-offset-4 hover:underline disabled:pointer-events-none disabled:opacity-40"
+            className="type-label whitespace-nowrap text-verdigris-on-light underline-offset-4 hover:underline disabled:pointer-events-none disabled:opacity-40"
           >
             {state.thinking ? "Hide thinking" : "Show thinking"}
-          </motion.button>
-        </motion.div>
-        <motion.div initial={false} animate={{ x: -tuck }} transition={slide}>
+          </button>
           <motion.button
             type="button"
             onClick={actions.closeDrawer}
@@ -169,7 +153,7 @@ export function AssistantDrawer() {
                 <motion.button
                   key="panel-open"
                   type="button"
-                  onClick={actions.showThinking}
+                  onClick={() => actions.showThinking()}
                   disabled={state.analysis !== "done"}
                   aria-expanded={false}
                   aria-controls="assistant-side-panel"

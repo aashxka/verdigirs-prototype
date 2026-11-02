@@ -107,14 +107,19 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
   const { state, actions } = usePrototype();
   const ruledOut = state.ruledOut.includes(cause.id);
   const root = isRoot(state, cause.id);
-  const active = state.side?.cause === cause.id && !state.thinking && state.tab === "rca";
-  const boxes = active ? (state.side?.boxes ?? []) : [];
+  // The ring follows whatever the side panel shows for this tile: its
+  // Thinking (when a click on it opened Thinking) or its own boxes.
+  const rca = state.tab === "rca";
+  const thinkingHere = rca && state.thinking && state.thinkingFor === cause.id;
+  const boxesHere = rca && !state.thinking && state.side?.cause === cause.id;
+  const active = thinkingHere || boxesHere;
+  const boxes = boxesHere ? state.side!.boxes : [];
 
   // A click anywhere on the tile but its own controls opens Thinking in
   // the side panel. Keyboard users reach it from the tab bar's toggle.
   const onTileClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("button, a, input, [role=button]")) return;
-    actions.showThinking();
+    actions.showThinking(cause.id);
   };
 
   return (

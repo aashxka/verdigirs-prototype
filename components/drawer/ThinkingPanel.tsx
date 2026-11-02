@@ -14,10 +14,13 @@ import { Collapse, ConfidenceLabel, Icon } from "../ui";
  * behind the ranking. Rail and dots follow the Log tab, cards and type
  * follow the DS (shared radius, 1px border, 14/1.6 body, 13 caption). */
 export function ThinkingPanel() {
+  const { state } = usePrototype();
+  // Opened from a cause tile, the title names it.
+  const title = state.thinkingFor ? `Showing thinking for ${causeById(state.thinkingFor).headline}` : "Thinking";
   return (
     <div className="flex flex-col gap-6 px-6 pb-8">
       <header className="flex flex-col gap-1">
-        <h3 className="type-section text-foreground">Thinking</h3>
+        <h3 className="type-section text-pretty text-foreground">{title}</h3>
         <p className="type-body text-pretty text-muted-foreground">{THINKING_INTRO}</p>
       </header>
       <ol className="flex flex-col" aria-label="Investigation steps">

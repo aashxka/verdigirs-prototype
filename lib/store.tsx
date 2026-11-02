@@ -68,6 +68,9 @@ export type State = {
   /* Thinking: the side panel shows the investigation timeline over a
    * cause's boxes (side keeps them, so Hide thinking returns to them). */
   thinking: boolean;
+  /* The cause tile whose click opened Thinking (null when it was opened
+   * from Show thinking or the tab bar). That tile keeps its ring. */
+  thinkingFor: Cause["id"] | null;
   steps: Record<string, StepStatus>;
   dialog: { stepKey: string; submitting: boolean } | null;
   toast: Toast | null;
@@ -108,6 +111,7 @@ const initial: State = {
   ruledOut: [],
   side: null,
   thinking: false,
+  thinkingFor: null,
   steps: {},
   dialog: null,
   toast: null,
@@ -303,10 +307,11 @@ function useController() {
         patch({ side: null, thinking: false });
       },
       /* Thinking is the side panel's default: a click on any cause
-       * tile, or the tab bar's panel button, shows it. A cause's boxes
-       * stay underneath, so Hide thinking goes back to them. */
-      showThinking() {
-        patch({ thinking: true });
+       * tile (which names that tile), Show thinking, or the tab bar's
+       * panel button shows it. A cause's boxes stay underneath, so
+       * Hide thinking goes back to them. */
+      showThinking(from?: Cause["id"]) {
+        patch({ thinking: true, thinkingFor: from ?? null });
       },
       /* The side panel's Hide thinking: back to the cause's boxes if
        * there are any, otherwise the panel closes. */
