@@ -23,7 +23,7 @@ export function InvestigateButton({ loading, onClick }: { loading: boolean; onCl
       initial={false}
       animate={{ width: loading ? WIDTH.loading : WIDTH.rest }}
       whileTap={loading ? undefined : { scale: 0.97 }}
-      transition={{ duration: DUR.routine, ease: EASE.snap }}
+      transition={{ duration: DUR.routine, ease: EASE.reveal }}
       className="relative isolate flex h-[34px] items-center overflow-hidden rounded-md p-[1.5px] [filter:drop-shadow(-1px_0_1.5px_rgba(0,0,0,0.06))_drop-shadow(-12px_0_16px_rgba(0,0,0,0.08))]"
     >
       <span className={`ring-rest absolute inset-0 -z-10 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`} aria-hidden />
@@ -32,10 +32,10 @@ export function InvestigateButton({ loading, onClick }: { loading: boolean; onCl
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={loading ? "loading" : "rest"}
-            initial={{ opacity: 0, y: 6, filter: "blur(3px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -6, filter: "blur(3px)" }}
-            transition={{ duration: DUR.routine, ease: EASE.snap }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: DUR.routine, ease: EASE.reveal }}
             className="whitespace-nowrap text-[14px] font-medium leading-5 text-verdigris-on-light"
           >
             {loading ? "Investigating…" : "Investigate with AI"}

@@ -54,7 +54,7 @@ function DialogBody({ stepKey, submitting }: { stepKey: string; submitting: bool
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97, y: 4, transition: { duration: DUR.dialogOut, ease: EASE.standard } }}
       transition={{ duration: DUR.dialogIn, ease: EASE.reveal }}
-      className="relative flex w-[480px] flex-col gap-4 rounded-xl border border-border bg-background p-6 shadow-dialog"
+      className="relative flex w-[480px] flex-col gap-4 rounded-lg border border-border bg-background p-6 shadow-dialog"
     >
       <div className="flex items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">

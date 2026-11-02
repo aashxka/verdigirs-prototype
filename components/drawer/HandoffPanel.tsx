@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
 import { HANDOFF, LOG_SEED, RECIPIENTS, type Channel, type HandoffMessage, type Recipient } from "@/lib/data";
-import { DUR, EASE } from "@/lib/motion";
+import { DUR, EASE, TWEEN } from "@/lib/motion";
 import { pickedMessages, usePrototype } from "@/lib/store";
 import { Badge, Button, Checkbox, Collapse, Icon, Spinner } from "../ui";
 
@@ -73,7 +73,7 @@ export function HandoffPanel() {
             aria-labelledby="messages"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4, filter: "blur(3px)", transition: { duration: DUR.collapse, ease: EASE.standard } }}
+            exit={{ opacity: 0, y: -4, transition: { duration: DUR.collapse, ease: EASE.standard } }}
             transition={{ duration: DUR.reveal, ease: EASE.reveal }}
             className="flex flex-col gap-3"
           >
@@ -113,22 +113,22 @@ export function HandoffPanel() {
           {phase === "sent" ? (
             <motion.p
               key="sent"
-              initial={{ opacity: 0, filter: "blur(4px)", y: 4 }}
-              animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-              transition={{ duration: 0.3, ease: EASE.reveal }}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: DUR.moderate, ease: EASE.reveal }}
               className="flex items-center gap-2 text-[14px] font-medium leading-5 text-foreground"
             >
               <Icon src="/figma/cause/circle-check.svg" size={16} />
               Sent at {sentAt}
             </motion.p>
           ) : phase === "ready" || phase === "sending" ? (
-            <motion.span key="send" initial={{ opacity: 0, filter: "blur(3px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+            <motion.span key="send" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: DUR.fast } }}>
               <Button kind="primary" loading={phase === "sending"} onClick={actions.sendHandoff}>
                 Send {n} {n === 1 ? "message" : "messages"}
               </Button>
             </motion.span>
           ) : (
-            <motion.span key="generate" className="flex items-center gap-3" exit={{ opacity: 0, filter: "blur(3px)", transition: { duration: 0.12 } }}>
+            <motion.span key="generate" className="flex items-center gap-3" exit={{ opacity: 0, transition: { duration: DUR.fast } }}>
               <Button kind="primary" disabled={n === 0} loading={phase === "writing"} onClick={actions.generate}>
                 {n === 0 ? "Generate messages" : `Generate ${n} ${n === 1 ? "message" : "messages"}`}
               </Button>
@@ -207,7 +207,7 @@ function ChannelChip({ label, checked, disabled, onClick }: { label: string; che
       disabled={disabled}
       onClick={onClick}
       whileTap={disabled ? undefined : { scale: 0.97 }}
-      transition={{ duration: DUR.press, ease: EASE.out }}
+      transition={{ duration: DUR.press, ease: EASE.standard }}
       className={`flex items-center gap-2 rounded-md border py-1.5 pl-2.5 pr-3 transition-colors duration-150 disabled:cursor-default ${
         checked ? "border-verdigris-on-light bg-accent-subtle" : "border-border bg-background enabled:hover:bg-surface-subtle"
       }`}
@@ -253,14 +253,14 @@ function MessageCard({
           {sent ? (
             <motion.span
               key="sent"
-              initial={{ opacity: 0, scale: 0.85, filter: "blur(2px)" }}
-              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-              transition={{ type: "spring", stiffness: 520, damping: 32, mass: 0.8, delay: index * 0.07 }}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ ...TWEEN.pop, delay: index * 0.07 }}
             >
               <Badge tone="teal">Sent</Badge>
             </motion.span>
           ) : (
-            <motion.span key="audience" exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+            <motion.span key="audience" exit={{ opacity: 0, transition: { duration: DUR.fast } }}>
               <Badge tone="muted">{recipient.audience}</Badge>
             </motion.span>
           )}
@@ -278,7 +278,7 @@ function MessageCard({
               <MessageBody message={message} writtenAt={writtenAt} />
             </motion.div>
           ) : (
-            <motion.div key="skeleton" exit={{ opacity: 0, transition: { duration: 0.12 } }} className="flex flex-col gap-2 py-1" aria-hidden>
+            <motion.div key="skeleton" exit={{ opacity: 0, transition: { duration: DUR.fast } }} className="flex flex-col gap-2 py-1" aria-hidden>
               {SKELETON[message.kind].map((w, i) => (
                 <span key={i} className="shimmer block h-3 rounded-[4px]" style={{ width: w }} />
               ))}
@@ -298,8 +298,8 @@ const SKELETON: Record<HandoffMessage["kind"], string[]> = {
 
 /* Each line resolves out of a soft blur, in reading order. */
 const line = {
-  hidden: { opacity: 0, y: 4, filter: "blur(5px)" },
-  shown: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: DUR.reveal, ease: EASE.reveal } },
+  hidden: { opacity: 0, y: 4 },
+  shown: { opacity: 1, y: 0, transition: { duration: DUR.reveal, ease: EASE.reveal } },
 };
 
 /* Slack shows its own 12-hour clock: "13:38" → "1:38 PM". */
@@ -372,8 +372,8 @@ function MessageBody({ message, writtenAt }: { message: HandoffMessage; writtenA
     <div className="flex justify-end">
       <motion.p
         variants={{
-          hidden: { opacity: 0, scale: 0.94, filter: "blur(4px)" },
-          shown: { opacity: 1, scale: 1, filter: "blur(0px)", transition: { duration: DUR.reveal, ease: EASE.reveal } },
+          hidden: { opacity: 0, scale: 0.94 },
+          shown: { opacity: 1, scale: 1, transition: { duration: DUR.reveal, ease: EASE.reveal } },
         }}
         style={{ transformOrigin: "right bottom" }}
         className="w-[340px] rounded-[18px] rounded-br-[4px] bg-verdigris-on-light px-4 py-3 text-[14px] leading-5 text-white"

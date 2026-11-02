@@ -86,7 +86,7 @@ export function RelatedPanel() {
             aria-label={active ? `Filter, ${filter.tags.length + (filter.resolvedOnly ? 1 : 0)} active` : "Filter"}
             onClick={() => actions.openRelatedMenu("filter")}
             whileTap={{ scale: 0.97 }}
-            transition={{ duration: DUR.press, ease: EASE.out }}
+            transition={{ duration: DUR.press, ease: EASE.standard }}
             className={`flex h-[34px] items-center rounded-button border px-3 text-[14px] font-medium leading-5 text-foreground transition-colors duration-150 ${
               active ? "border-verdigris-on-light bg-accent-subtle" : "border-border bg-background hover:bg-surface-subtle"
             } ${menu === "filter" && !active ? "bg-surface-subtle" : ""}`}
@@ -209,10 +209,10 @@ function useFlip(container: React.RefObject<HTMLDivElement | null>, arrangement:
       if (before === undefined) {
         n.animate(
           [
-            { opacity: 0, transform: "translateY(4px)", filter: "blur(4px)" },
-            { opacity: 1, transform: "none", filter: "none" },
+            { opacity: 0, transform: "translateY(4px)" },
+            { opacity: 1, transform: "none" },
           ],
-          { duration: 260, easing, delay: 80 + entering++ * 30, fill: "backwards" },
+          { duration: 300, easing, delay: 80 + entering++ * 30, fill: "backwards" },
         );
         return;
       }
@@ -327,7 +327,7 @@ function Trigger({ label, value, open, onClick }: { label: string; value: string
       aria-expanded={open}
       onClick={onClick}
       whileTap={{ scale: 0.97 }}
-      transition={{ duration: DUR.press, ease: EASE.out }}
+      transition={{ duration: DUR.press, ease: EASE.standard }}
       className={`flex h-[34px] items-center gap-1.5 rounded-md border border-border px-2.5 text-[14px] leading-5 transition-colors duration-150 ${
         open ? "bg-surface-subtle" : "bg-background hover:bg-surface-subtle"
       }`}

@@ -13,7 +13,7 @@ import {
   type Cause,
   type Confidence,
 } from "@/lib/data";
-import { EASE, SPRING } from "@/lib/motion";
+import { DUR, EASE, SPRING, TWEEN } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Badge, Button, Icon } from "../ui";
 
@@ -54,12 +54,12 @@ export function OddsLine({ id, size = "md" }: { id: Cause["id"]; size?: "md" | "
   const lg = size === "lg";
   return (
     <span className={`flex min-w-0 items-baseline ${lg ? "gap-2.5" : "gap-2"}`}>
-      <span className={`flex shrink-0 items-center gap-1.5 font-semibold tabular ${lg ? "text-[20px] leading-7 tracking-[-0.34px]" : "text-[16px] leading-6"}`}>
+      <span className={`flex shrink-0 items-center gap-1.5 font-semibold tabular ${lg ? "text-[20px] leading-7" : "text-[16px] leading-6"}`}>
         <span className="text-destructive">{ODDS_NOW}%</span>
         <Icon src={`${W}/arrow-right.svg`} size={lg ? 16 : 14} />
         <span className={RISK_TEXT_SMALL[riskFor(after)]}>{after}%</span>
       </span>
-      <span className={`truncate text-muted-foreground ${lg ? "text-[14px] leading-5" : "text-[12px] leading-4"}`}>{fix}</span>
+      <span className={`truncate text-muted-foreground ${lg ? "text-[14px] leading-5" : "text-[13px] leading-5"}`}>{fix}</span>
     </span>
   );
 }
@@ -69,7 +69,7 @@ export function OddsBlock({ id, cta }: { id: Cause["id"]; cta: { label: string; 
   return (
     <div className="flex items-center gap-3 rounded-md border border-border bg-background py-2.5 pl-3 pr-2.5">
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[12px] font-medium leading-4 text-muted-foreground">UPS-2 failure · next 6 h</span>
+        <span className="type-label text-muted-foreground">UPS-2 failure risk in the next 6 hours</span>
         <OddsLine id={id} />
       </span>
       <Button kind="secondary" onClick={cta.onClick}>
@@ -95,16 +95,16 @@ export function CauseSimulator({ id }: { id: Cause["id"] }) {
     <section className="flex flex-col gap-6" aria-label="Simulate the UPS-2 failure odds">
       <div className="flex w-full items-stretch gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-border bg-background p-3">
-          <span className="text-[12px] font-medium leading-4 text-muted-foreground">Now</span>
+          <span className="type-label text-muted-foreground">Now</span>
           <span className="flex items-center justify-between">
-            <span className="text-[32px] font-semibold leading-9 tracking-[-0.64px] text-pastel-red tabular">{ODDS_NOW}%</span>
+            <span className="text-[32px] font-semibold leading-9 text-pastel-red tabular">{ODDS_NOW}%</span>
             <Badge tone="danger">High</Badge>
           </span>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-border bg-background p-3">
-          <span className="text-[12px] font-medium leading-4 text-foreground">After</span>
+          <span className="type-label text-foreground">After</span>
           <span className="flex items-center justify-between" aria-live="polite">
-            <span className={`flex text-[32px] font-semibold leading-9 tracking-[-0.64px] transition-colors duration-300 ${RISK_TEXT[risk]}`}>
+            <span className={`flex text-[32px] font-semibold leading-9 transition-colors duration-300 ${RISK_TEXT[risk]}`}>
               <RollingNumber value={after} />%
             </span>
             <span className="flex items-center gap-1.5">
@@ -112,10 +112,10 @@ export function CauseSimulator({ id }: { id: Cause["id"] }) {
               <AnimatePresence initial={false}>
                 {changed && (
                   <motion.span
-                    initial={{ opacity: 0, scale: 0.9, filter: "blur(2px)" }}
-                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.12 } }}
-                    transition={SPRING.pop}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9, transition: { duration: DUR.fast } }}
+                    transition={TWEEN.pop}
                     className="flex"
                   >
                     <Badge tone="teal">
@@ -140,7 +140,7 @@ export function CauseSimulator({ id }: { id: Cause["id"] }) {
               onClick={() => actions.setSimStop(id, 0)}
               initial={false}
               animate={{ opacity: changed ? 1 : 0, pointerEvents: changed ? "auto" : "none" }}
-              transition={{ duration: 0.18, ease: EASE.snap }}
+              transition={{ duration: DUR.normal, ease: EASE.reveal }}
               whileTap={{ scale: 0.97 }}
               className="flex h-8 items-center gap-1.5 rounded-button px-3 text-[14px] font-medium leading-5 text-foreground-secondary transition-colors duration-150 hover:bg-secondary"
               tabIndex={changed ? 0 : -1}
@@ -157,7 +157,7 @@ export function CauseSimulator({ id }: { id: Cause["id"] }) {
               onChange={(v) => actions.setSimStop(id, v)}
             />
             {lever === "ups" && (
-              <p className="text-[12px] leading-4 text-muted-foreground">
+              <p className="type-meta text-muted-foreground">
                 {UPS_STOPS[stop].note}
                 {UPS_STOPS[stop].risk && <span className="text-warning-fg"> · {UPS_STOPS[stop].risk}</span>}
               </p>
@@ -165,7 +165,7 @@ export function CauseSimulator({ id }: { id: Cause["id"] }) {
           </div>
         </div>
       ) : (
-        <p className="text-pretty text-[14px] leading-5 text-muted-foreground">{note}</p>
+        <p className="type-body text-pretty text-muted-foreground">{note}</p>
       )}
     </section>
   );
@@ -176,10 +176,10 @@ function RiskChip({ level }: { level: Confidence }) {
     <AnimatePresence mode="popLayout" initial={false}>
       <motion.span
         key={level}
-        initial={{ opacity: 0, y: 4, filter: "blur(2px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        exit={{ opacity: 0, y: -4, filter: "blur(2px)" }}
-        transition={{ duration: 0.2, ease: EASE.snap }}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: DUR.normal, ease: EASE.reveal }}
         className="flex"
       >
         <Badge tone={RISK_TONE[level]}>{level}</Badge>

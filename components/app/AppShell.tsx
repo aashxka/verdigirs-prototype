@@ -8,7 +8,7 @@ function Img({ src, w, h, className = "" }: { src: string; w: number; h: number;
 
 export function TopBar() {
   return (
-    <header className="flex h-[55px] shrink-0 items-center justify-between rounded-t-[24px] border-b border-border bg-surface-subtle px-[19px]">
+    <header className="flex h-[55px] shrink-0 items-center justify-between border-b border-border bg-surface-subtle px-[19px]">
       <nav aria-label="Breadcrumb" className="flex items-center gap-4 text-[15.73px] leading-6 tracking-[-0.09px] text-foreground-tertiary">
         <Img src={`${A}/logo.png`} w={25} h={28} className="object-cover" />
         <span aria-hidden>/</span>
@@ -45,7 +45,7 @@ export function Rail() {
     { src: "rail-4.svg", pad: "h-10" },
   ];
   return (
-    <aside className="flex h-full w-[42px] shrink-0 flex-col justify-between rounded-bl-[24px] border-r border-border bg-surface-subtle" aria-label="Signals navigation">
+    <aside className="flex h-full w-[42px] shrink-0 flex-col justify-between border-r border-border bg-surface-subtle" aria-label="Signals navigation">
       <div className="flex flex-col pl-[14px] pt-3">
         {top.map((i) => (
           <span key={i.src} className={`flex items-center ${i.pad}`}>
@@ -111,19 +111,21 @@ export function FilterSelect({ label }: { label: string }) {
   );
 }
 
-export function MetricCards({ wide = false }: { wide?: boolean }) {
+/* Latest readings. Only a value past its threshold is red; "Power" is
+ * in watts (the Figma card said "Voltage" over a W value). */
+export function MetricCards() {
   const cards = [
-    { label: "Current (RMS)", value: "12.5 A", threshold: "Threshold: > 50 A" },
-    { label: "Total Harmonic...", value: "180.00 %", threshold: "Threshold: > 5.00 %" },
-    { label: "Voltage", value: "1650 W" },
+    { label: "Current (RMS)", value: "12.5 A", threshold: "Threshold: > 50 A", over: false },
+    { label: "Harmonic distortion (THDi)", value: "180%", threshold: "Threshold: > 5%", over: true },
+    { label: "Power", value: "1650 W", over: false },
   ];
   return (
-    <div className={`flex w-full items-stretch ${wide ? "gap-3" : "gap-3"}`}>
+    <div className="flex w-full shrink-0 items-stretch gap-3">
       {cards.map((c) => (
-        <div key={c.label} className="flex min-w-0 flex-1 flex-col gap-6 rounded-xl border-[0.5px] border-border bg-background p-[17px] shadow-metric">
-          <span className="text-[14px] leading-[21px] tracking-[-0.15px] text-foreground-secondary">{c.label}</span>
+        <div key={c.label} className="flex min-w-0 flex-1 flex-col gap-6 rounded-lg border border-border bg-background p-4 shadow-metric">
+          <span className="truncate text-[14px] leading-[21px] tracking-[-0.15px] text-foreground-secondary">{c.label}</span>
           <span className="flex flex-col gap-2">
-            <span className="font-lato text-[26px] font-bold leading-[26px] tracking-[0.22px] text-destructive">{c.value}</span>
+            <span className={`font-lato text-[26px] font-bold leading-[26px] tracking-[0.22px] tabular-nums ${c.over ? "text-destructive" : "text-foreground"}`}>{c.value}</span>
             {c.threshold && <span className="text-[14px] leading-[18px] text-foreground-tertiary">{c.threshold}</span>}
           </span>
         </div>

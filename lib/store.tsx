@@ -5,6 +5,7 @@ import {
   ALL_STEPS,
   CAUSE_ODDS,
   CAUSES,
+  causeById,
   CONFIRMED_ONLY,
   QUESTION,
   RECIPIENTS,
@@ -35,7 +36,8 @@ export type Undo = { kind: "confirm"; prev: Cause["id"] | null } | { kind: "step
 export type SideView = "simulate" | "actions";
 export type Side = { cause: Cause["id"]; boxes: SideView[] };
 const BOX_ORDER: SideView[] = ["simulate", "actions"];
-export type Toast = { id: number; text: string; undo?: Undo };
+export type Toast = { id: number; text: string; description?: string; undo?: Undo };
+type ToastInput = Omit<Toast, "id">;
 export type ChatPhase = "idle" | "typing" | "ready" | "searching" | "answering" | "done";
 export type Tab = "rca" | "related" | "log" | "handoff";
 export type HandoffPhase = "pick" | "writing" | "ready" | "sending" | "sent";
@@ -64,6 +66,9 @@ export type State = {
   confirming: Cause["id"] | null;
   ruledOut: Cause["id"][];
   side: Side | null;
+  /* Show thinking: the side panel holds the investigation timeline
+   * instead of a cause's boxes (the two never share it). */
+  thinking: boolean;
   steps: Record<string, StepStatus>;
   dialog: { stepKey: string; submitting: boolean } | null;
   toast: Toast | null;
@@ -102,6 +107,7 @@ const initial: State = {
   confirming: null,
   ruledOut: [],
   side: null,
+  thinking: false,
   steps: {},
   dialog: null,
   toast: null,
@@ -135,7 +141,7 @@ type Action =
   | { type: "reset" }
   | { type: "patch"; patch: Partial<State> }
   | { type: "step"; key: string; status: StepStatus }
-  | { type: "toast"; text: string; undo?: Undo }
+  | { type: "toast"; toast: ToastInput }
   | { type: "dismissToast"; id: number }
   | { type: "log"; key: LogKey; cause?: Cause["id"] }
   | { type: "unlog"; keys: string[]; cause?: Cause["id"] };
@@ -151,7 +157,7 @@ function reducer(state: State, action: Action): State {
     case "step":
       return { ...state, steps: { ...state.steps, [action.key]: action.status } };
     case "toast":
-      return { ...state, toast: { id: ++toastId, text: action.text, undo: action.undo } };
+      return { ...state, toast: { id: ++toastId, ...action.toast } };
     case "dismissToast":
       return state.toast?.id === action.id ? { ...state, toast: null } : state;
     case "log":
@@ -202,7 +208,7 @@ function useController() {
   });
 
   const patch = useCallback((p: Partial<State>) => dispatch({ type: "patch", patch: p }), []);
-  const toast = useCallback((text: string, undo?: Undo) => dispatch({ type: "toast", text, undo }), []);
+  const toast = useCallback((toast: ToastInput) => dispatch({ type: "toast", toast }), []);
 
   const runAnalysis = useCallback(() => {
     clear("analysis");
@@ -251,7 +257,9 @@ function useController() {
           patch({ root: id, confirming: null });
           if (prev) dispatch({ type: "unlog", keys: ["confirm"] });
           dispatch({ type: "log", key: "confirm", cause: id });
-          after("confirm", 260, () => toast("Marked as the root cause.", { kind: "confirm", prev }));
+          after("confirm", 260, () =>
+            toast({ text: "Root cause confirmed", description: causeById(id).headline, undo: { kind: "confirm", prev } }),
+          );
         });
       },
       /* No on a tile: it folds down to its headline, with Undo beside it. */
@@ -287,7 +295,7 @@ function useController() {
           return;
         }
         if (!same) clear("sim");
-        patch({ side: { cause: id, boxes: BOX_ORDER.filter((b) => b === view || current.includes(b)) } });
+        patch({ side: { cause: id, boxes: BOX_ORDER.filter((b) => b === view || current.includes(b)) }, thinking: false });
         const { lever, preset } = CAUSE_ODDS[id];
         if (view === "simulate" && lever && s.simStop[id] === 0) {
           after("sim", s.side ? TIMING.simPrime : TIMING.simPrimeOpening, () =>
@@ -297,7 +305,17 @@ function useController() {
       },
       closeSide() {
         clear("sim");
-        patch({ side: null });
+        patch({ side: null, thinking: false });
+      },
+      /* Show thinking takes the side panel; the link toggles it. */
+      toggleThinking() {
+        clear("sim");
+        patch({ thinking: !ref.current.thinking, side: null });
+      },
+      /* A source in Show thinking that is a past issue: open it in Related issues. */
+      openRelatedIssue(id: string) {
+        const r = ref.current.related;
+        patch({ tab: "related", related: { ...r, menu: null, open: r.open.includes(id) ? r.open : [...r.open, id] } });
       },
       runStep(key: string) {
         const step = ALL_STEPS.find((s) => s.key === key);
@@ -310,7 +328,7 @@ function useController() {
         after("step", TIMING.actionSpinner, () => {
           dispatch({ type: "step", key, status: "done" });
           dispatch({ type: "log", key: key as LogKey });
-          toast(step.toast, { kind: "step", key });
+          toast({ text: step.toast, undo: { kind: "step", key } });
         });
       },
       closeDialog() {
@@ -325,7 +343,7 @@ function useController() {
           patch({ dialog: null });
           dispatch({ type: "step", key: d.stepKey, status: "done" });
           dispatch({ type: "log", key: d.stepKey as LogKey });
-          after("step", 180, () => step && toast(step.toast, { kind: "step", key: d.stepKey }));
+          after("step", 180, () => step && toast({ text: step.toast, undo: { kind: "step", key: d.stepKey } }));
         });
       },
       undo(t: Toast) {
@@ -341,9 +359,17 @@ function useController() {
           dispatch({ type: "unlog", keys: ["confirm", ...(prev === 1 ? [] : CONFIRMED_ONLY)] });
           if (prev) dispatch({ type: "log", key: "confirm", cause: prev });
         } else {
-          dispatch({ type: "step", key: t.undo.key, status: "idle" });
-          dispatch({ type: "unlog", keys: [t.undo.key] });
+          actions.undoStep(t.undo.key);
         }
+      },
+      /* Undo beside a finished action (and the toast's Undo): the
+       * action goes back to its button and leaves the Log. */
+      undoStep(key: string) {
+        if (ref.current.steps[key] !== "done") return;
+        const t = ref.current.toast;
+        if (t?.undo?.kind === "step" && t.undo.key === key) dispatch({ type: "dismissToast", id: t.id });
+        dispatch({ type: "step", key, status: "idle" });
+        dispatch({ type: "unlog", keys: [key] });
       },
       dismissToast(id: number) {
         dispatch({ type: "dismissToast", id });
@@ -422,7 +448,7 @@ function useController() {
         after("handoff", TIMING.actionSpinner + 180, () => {
           patch({ handoff: "sent" });
           dispatch({ type: "log", key: "handoff" });
-          after("handoff", 180, () => toast(`Handoff sent to ${names.join(" and ")}. Added to the Log.`));
+          after("handoff", 180, () => toast({ text: `Handoff sent to ${names.join(" and ")}`, description: "Added to the Log" }));
         });
       },
       focusComposer() {

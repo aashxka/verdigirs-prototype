@@ -1,11 +1,10 @@
 /* ─────────────────────────────────────────────────────────
  * MOTION STORYBOARD — Signals Assistant prototype
  *
- * Curves come from the Verdigris motion tokens and the Figma
- * prototype links:
+ * Curves and durations are the Verdigris motion tokens:
  *   reveal-cubic  cubic-bezier(0.33, 1, 0.68, 1)   arrivals, drawer, expand
- *   ease          cubic-bezier(0.25, 0.1, 0.25, 1) rows that move (confirm)
- *   snap          cubic-bezier(0.23, 1, 0.32, 1)   composer state changes
+ *   ease          cubic-bezier(0.25, 0.1, 0.25, 1) hover, press, exits
+ *   fast 150 · normal 200 · moderate 300 · slow 500 (ms)
  *
  * INVESTIGATE → RESULTS (ms after click)
  *     0   ring turns into a clockwise conic sweep, label → "Investigating…"
@@ -13,15 +12,15 @@
  *   950   trace card fades up; steps tick off one by one
  *  3150   trace folds away (250ms)
  *  3350   three cause tiles resolve out of their skeletons (staggered
- *         260ms); each tile's signal line draws left to right (900ms)
+ *         260ms); each tile's signal line draws left to right (500ms)
  *  4250   analysis done: the composer wakes up
  *
  * SIMULATE / RECOMMEND ACTIONS (any tile)
- *     0   the drawer widens 600 → 1200 on a critically damped spring
- *         (~420ms). The tiles ride its leading edge left; the side
+ *     0   the drawer slides 600px left to make room (300ms, transform
+ *         only). The tiles ride its leading edge left; the side
  *         panel arrives from the right edge, the way it will leave.
  *         The tile it belongs to takes a verdigris ring.
- *    60   side panel contents settle in (fade, 12px, blur 4 → 0)
+ *    60   side panel contents settle in (fade, 12px)
  *     0   Recommend actions under the simulation: its box opens below
  *         (300ms) and the panel scrolls to it
  *   560   (Simulate) the lever glides to its recommended stop; After
@@ -35,7 +34,7 @@
  *     0   Yes shows a spinner, No dims
  *   700   confidence swaps for "Root cause", the footer reads "You
  *         confirmed this", rack 14's actions turn to the fix steps
- *   950   toast rises from the footer, dismisses after 5s
+ *   950   Sonner toast slides in bottom right, dismisses after 4s
  *
  * NO (rule a tile out)
  *     0   the tile folds to its headline (300ms) beside Undo
@@ -66,25 +65,33 @@
  *  Send → 700 spinner → cards flip to "Sent", toast rises
  * ───────────────────────────────────────────────────────── */
 
+/* Verdigris motion tokens (design.verdigris.co/foundations/motion and
+ * tokens/motion/*.json). The product-ui profile runs interactions at
+ * duration.normal with easing.default, and entrances at duration.slow
+ * with an ease-out. Only transform and opacity animate (no blur), and
+ * nothing outside the drag lever runs longer than duration.slow. */
 export const EASE = {
+  // easing.reveal-cubic, the DS's cubic ease-out: entrances, panels, expand
   reveal: [0.33, 1, 0.68, 1] as const,
+  // easing.default (CSS `ease`): hover, press, exits and rows that move
   standard: [0.25, 0.1, 0.25, 1] as const,
-  snap: [0.23, 1, 0.32, 1] as const,
-  out: [0.16, 1, 0.3, 1] as const,
 };
 
+/* duration.* in seconds, then the roles this prototype uses them for. */
+const D = { fast: 0.15, normal: 0.2, moderate: 0.3, slow: 0.5 };
+
 export const DUR = {
-  press: 0.15,
-  routine: 0.2,
-  drawer: 0.3,
-  drawerOut: 0.2,
-  expand: 0.3,
-  collapse: 0.2,
-  dialogIn: 0.2,
-  dialogOut: 0.15,
-  toastIn: 0.24,
-  toastOut: 0.15,
-  reveal: 0.42,
+  ...D,
+  press: D.fast,
+  exit: D.fast,
+  routine: D.normal,
+  drawer: D.moderate, // panel reveal
+  drawerOut: D.normal,
+  expand: D.moderate,
+  collapse: D.normal,
+  dialogIn: D.normal,
+  dialogOut: D.fast,
+  reveal: D.slow, // AI output arriving: the product-ui entrance
 };
 
 export const TIMING = {
@@ -98,7 +105,7 @@ export const TIMING = {
   confirmSpinner: 700,
   simPrime: 380, // Simulate in an open side panel → lever glides to its recommended stop
   simPrimeOpening: 560, // same, while the side panel is still widening
-  toastLife: 5000,
+  toastLife: 4000, // Sonner default, per the DS toast page
   actionSpinner: 520,
   typeChar: 26, // base ms per character when auto-typing
   searchStep: [600, 2000, 2900], // each search step finishes (after Send)
@@ -110,22 +117,26 @@ export const TIMING = {
   writeSettle: 450, // last message done → Send appears
 };
 
-/* Springs */
+/* Tweens for the drawer and small pops. The DS has no spring tokens,
+ * so only the what-if lever, which follows the pointer and settles
+ * on a stop, keeps physics. */
+export const TWEEN = {
+  // The drawer sliding 600px to make room for the side panel: a panel reveal
+  panel: { duration: D.moderate, ease: EASE.reveal },
+  // Chips and badges arriving
+  pop: { duration: D.normal, ease: EASE.reveal },
+};
+
 export const SPRING = {
   // What-if: Figma smart animate spring (mass 1, stiffness 520, damping 44)
   whatIf: { type: "spring" as const, mass: 1, stiffness: 520, damping: 44 },
-  // Small pops: chips and badges
-  pop: { type: "spring" as const, stiffness: 520, damping: 32, mass: 0.8 },
   // Knob follows the pointer while dragging
   drag: { type: "spring" as const, stiffness: 900, damping: 60 },
-  // Drawer widening for the side panel: critically damped, no
-  // overshoot (a button opened it, not a flick)
-  panel: { type: "spring" as const, bounce: 0, visualDuration: 0.42 },
 };
 
-/* A reveal that resolves out of a soft blur: used for AI output. */
+/* AI output arriving: a short rise and fade. */
 export const resolveIn = {
-  initial: { opacity: 0, y: 6, filter: "blur(6px)" },
-  animate: { opacity: 1, y: 0, filter: "blur(0px)" },
-  exit: { opacity: 0, y: -4, filter: "blur(4px)" },
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
 };

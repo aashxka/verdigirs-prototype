@@ -9,10 +9,13 @@ import { Rail, TopBar } from "./app/AppShell";
 import { SignalsPage } from "./app/SignalsPage";
 import { AssistantDrawer, AssistantMinimized } from "./drawer/Drawer";
 import { ScheduleDialog } from "./ScheduleDialog";
+import { ToastBridge, Toaster } from "./Toaster";
 
-/* The Figma frames are 1579 × 993. The stage scales that artboard to
- * fit any window, so it reads the same on a laptop or a screen share. */
-const ARTBOARD = { w: 1579, h: 993 };
+/* Signals fills the window edge to edge, like the real product. It
+ * lays out at no less than 1280 × 820 (the Figma frames are
+ * 1579 × 993): a smaller window gets that minimum scaled down to fit,
+ * rather than a cramped layout. */
+const MIN = { w: 1280, h: 820 };
 
 export function Prototype() {
   return (
@@ -21,39 +24,46 @@ export function Prototype() {
         <Stage>
           <Screen />
         </Stage>
+        {/* Outside the stage, so toasts sit on the window's corner at full size. */}
+        <Toaster />
+        <ToastBridge />
       </PrototypeProvider>
     </MotionConfig>
   );
 }
 
 function Stage({ children }: { children: React.ReactNode }) {
-  const [scale, setScale] = useState<number | null>(null);
+  const [fit, setFit] = useState<{ scale: number; w: number; h: number } | null>(null);
   useLayoutEffect(() => {
-    const fit = () => {
-      const pad = window.innerWidth > 900 ? 24 : 8;
-      setScale(Math.min((window.innerWidth - pad * 2) / ARTBOARD.w, (window.innerHeight - pad * 2) / ARTBOARD.h));
+    const measure = () => {
+      const { innerWidth: w, innerHeight: h } = window;
+      const scale = Math.min(1, w / MIN.w, h / MIN.h);
+      // A tall, narrow window (a phone) would stretch the layout into a
+      // tower; past square, the extra height is left as background.
+      setFit({ scale, w: w / scale, h: Math.min(h / scale, Math.max(MIN.h, w / scale)) });
     };
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, []);
+  const scaled = fit !== null && fit.scale < 1;
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-clip bg-[#eceef1]">
-      {scale !== null && scale < 0.5 && (
+    <div className="fixed inset-0 overflow-clip bg-surface-subtle">
+      {fit !== null && fit.scale < 0.5 && (
         <p className="absolute inset-x-4 top-4 z-50 rounded-lg bg-primary px-3 py-2 text-center text-[13px] leading-5 text-primary-foreground shadow-toast">
           Signals is a desktop tool. Open this on a laptop for the full prototype.
         </p>
       )}
       <div
-        className="relative shrink-0"
-        style={{ width: ARTBOARD.w * (scale ?? 1), height: ARTBOARD.h * (scale ?? 1), opacity: scale === null ? 0 : 1 }}
+        className="absolute left-0 top-0 origin-top-left overflow-clip bg-surface-subtle"
+        style={{
+          width: scaled ? fit.w : "100%",
+          height: scaled ? fit.h : "100%",
+          transform: scaled ? `scale(${fit.scale})` : undefined,
+          opacity: fit === null ? 0 : 1,
+        }}
       >
-        <div
-          className="absolute left-0 top-0 origin-top-left overflow-clip rounded-[20px] bg-surface-subtle shadow-[0_1px_2px_rgba(0,0,0,0.06),0_24px_64px_-24px_rgba(11,34,38,0.28)] ring-1 ring-black/5"
-          style={{ width: ARTBOARD.w, height: ARTBOARD.h, transform: `scale(${scale ?? 1})` }}
-        >
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   );
@@ -88,7 +98,7 @@ function Screen() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: DUR.routine, ease: EASE.out }}
+              transition={{ duration: DUR.routine, ease: EASE.standard }}
             >
               {state.view === "alert" ? <AlertPage investigating={state.investigating} onInvestigate={actions.investigate} /> : <SignalsPage />}
             </motion.div>

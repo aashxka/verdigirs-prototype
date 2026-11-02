@@ -9,7 +9,7 @@ export function AlertPage({ investigating, onInvestigate }: { investigating: boo
   return (
     <div className="flex min-h-0 flex-1">
       <Inbox />
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-br-[24px] bg-background">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
         <section className="flex flex-col gap-3 border-b border-border bg-background pb-5 shadow-[0_1px_2px_rgba(0,0,0,0.08)]">
           <div className="flex h-12 items-center justify-between border-b border-border px-5">
             <h1 className="font-lato text-[20px] font-bold leading-[30px] tracking-[-0.45px] text-foreground">UPS Rectifier Degradation</h1>
@@ -33,22 +33,22 @@ export function AlertPage({ investigating, onInvestigate }: { investigating: boo
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-1 flex-col gap-4 p-5">
+        <section className="scroll-quiet flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-lato text-[18px] font-bold leading-[27px] tracking-[-0.44px] text-foreground">Symptom Description</h2>
+            <h2 className="font-lato text-[18px] font-bold leading-[27px] tracking-[-0.44px] text-foreground">Symptoms</h2>
             <InvestigateButton loading={investigating} onClick={onInvestigate} />
           </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-4 rounded-xl border border-border bg-background p-6">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 rounded-lg border border-border bg-background p-6">
               <PhaseTabs />
               <div className="flex flex-col gap-1">
                 <p className="text-[14px] font-semibold leading-[27px] tracking-[-0.44px] text-foreground">
                   Phase A current spiked 16% above threshold at 12:30.
                 </p>
                 <ul className="list-disc text-[14px] leading-[21px] tracking-[-0.15px] text-foreground-secondary">
-                  <li className="ms-[21px]">Harmonic distortion at 180%, 36× above safe limit</li>
-                  <li className="ms-[21px]">Non-linear load switching on PDU-01-A9F identified as likely cause</li>
-                  <li className="ms-[21px]">Downstream equipment at risk if unresolved within 4–6 hours</li>
+                  <li className="ms-[21px]">Harmonic distortion (THDi) hit 180%, 36× the 5% limit</li>
+                  <li className="ms-[21px]">Likely cause: non-linear load, such as servers, switching on</li>
+                  <li className="ms-[21px]">Downstream equipment is at risk if this isn’t fixed within 4–6 hours</li>
                 </ul>
               </div>
               <PhaseChart />
@@ -82,7 +82,7 @@ function Inbox() {
       <ul className="flex flex-col bg-background">
         <li className="relative flex flex-col gap-1 border-b border-border bg-secondary px-5 py-3 shadow-[inset_8px_0_0_#18181b]" aria-current="true">
           <div className="flex items-start justify-between text-[14px] leading-[23px] tracking-[-0.15px]">
-            <span className="font-lato font-bold text-[#db000a]">Critical</span>
+            <span className="font-lato font-bold text-destructive">Critical</span>
             <span className="text-foreground">Today</span>
           </div>
           <div className="flex h-6 items-start justify-between">

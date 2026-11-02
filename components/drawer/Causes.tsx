@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useLayoutEffect, useRef } from "react";
 import { CAUSES, POWER_ON, causeById, type Cause, type CauseChart } from "@/lib/data";
-import { DUR, EASE, SPRING } from "@/lib/motion";
+import { DUR, EASE, TWEEN } from "@/lib/motion";
 import { isRoot, usePrototype } from "@/lib/store";
 import { Badge, Button, Collapse, ConfidenceLabel, Icon } from "../ui";
 import { OddsLine } from "./WhatIf";
@@ -34,10 +34,10 @@ export function CauseTiles() {
           ? [
               <motion.h3
                 key="others"
-                initial={{ opacity: 0, y: 4, filter: "blur(3px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: DUR.reveal, ease: EASE.reveal, delay: 0.16 }}
-                className="pb-3 pt-4 text-[16px] font-semibold leading-6 text-foreground"
+                className="type-section pb-3 pt-6 text-foreground"
               >
                 Other likely causes
               </motion.h3>,
@@ -65,10 +65,10 @@ function useTileFlip(list: React.RefObject<HTMLDivElement | null>, order: string
     last.current = { order, root: rootId, tops: new Map(tiles.map((n) => [n.dataset.flip!, n.offsetTop])) };
     if (!prev || prev.order === order || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const easing = `cubic-bezier(${EASE.out.join(",")})`;
+    const easing = `cubic-bezier(${EASE.reveal.join(",")})`;
     for (const n of tiles) {
       const dy = (prev.tops.get(n.dataset.flip!) ?? n.offsetTop) - n.offsetTop;
-      if (dy) n.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 520, easing });
+      if (dy) n.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: DUR.slow * 1000, easing });
     }
     if (rootId && rootId !== prev.root) {
       const sc = el.closest<HTMLElement>(".scroll-quiet");
@@ -85,14 +85,14 @@ function CauseSlot({ cause, i, rank }: { cause: Cause; i: number; rank?: number 
       {state.causesShown > i ? (
         <motion.div
           key="tile"
-          initial={{ opacity: 0, filter: "blur(6px)", y: 6 }}
-          animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DUR.reveal, ease: EASE.reveal }}
         >
           <CauseTile cause={cause} rank={rank} />
         </motion.div>
       ) : (
-        <motion.div key="skeleton" exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+        <motion.div key="skeleton" exit={{ opacity: 0, transition: { duration: DUR.fast } }}>
           <TileSkeleton />
         </motion.div>
       )}
@@ -111,7 +111,7 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
     <article
       id={`cause-${cause.id}`}
       aria-label={cause.headline}
-      className={`overflow-clip rounded-xl border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
+      className={`overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
         active
           ? "border-accent-border bg-background shadow-[0_0_0_3px_var(--color-accent-subtle),var(--shadow-xs)]"
           : ruledOut
@@ -126,8 +126,8 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
               key="rank"
               initial={{ width: 0, marginRight: -12, opacity: 0 }}
               animate={{ width: 20, marginRight: 0, opacity: 1 }}
-              exit={{ width: 0, marginRight: -12, opacity: 0, transition: { duration: 0.2, ease: EASE.standard } }}
-              transition={{ duration: 0.32, ease: EASE.reveal, delay: 0.2 }}
+              exit={{ width: 0, marginRight: -12, opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } }}
+              transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.2 }}
               className="flex h-6 shrink-0 items-center overflow-hidden"
             >
               <TileRank n={rank} />
@@ -135,7 +135,7 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
           )}
         </AnimatePresence>
         <h3
-          className={`min-w-0 flex-1 text-pretty text-[16px] font-semibold leading-6 tracking-[-0.18px] transition-colors duration-200 ${
+          className={`type-title min-w-0 flex-1 text-pretty transition-colors duration-200 ${
             ruledOut ? "text-muted-foreground" : "text-foreground"
           }`}
         >
@@ -158,10 +158,10 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
               <motion.span
                 key="root"
                 className="flex"
-                initial={{ opacity: 0, scale: 0.92, filter: "blur(3px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.12 } }}
-                transition={{ ...SPRING.pop, delay: 0.06 }}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96, transition: { duration: DUR.fast } }}
+                transition={{ ...TWEEN.pop, delay: 0.06 }}
                 style={{ transformOrigin: "right center" }}
               >
                 <Badge tone="teal">Root cause</Badge>
@@ -179,12 +179,12 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
         {/* One 20px rhythm between summary, evidence, odds and verdict;
             tighter inside each group (title → summary 6, label → odds 4). */}
         <div className="flex flex-col gap-5 px-5 pb-5">
-          <p className="text-pretty text-[14px] leading-5 text-foreground-tertiary">{cause.summary}</p>
+          <p className="type-body text-pretty text-foreground-tertiary">{cause.summary}</p>
           <TileChart chart={cause.chart} onOpen={cause.id === 1 ? actions.openSignals : undefined} />
 
           <div className="flex flex-col rounded-lg bg-secondary/70 p-4">
             <div className="flex flex-col gap-1">
-              <span className="text-[12px] font-medium leading-4 text-muted-foreground">UPS-2 failure risk · next 6 h</span>
+              <span className="type-label text-muted-foreground">UPS-2 failure risk in the next 6 hours</span>
               <OddsLine id={cause.id} size="lg" />
             </div>
             <div className="mt-4 flex gap-2">
@@ -214,10 +214,10 @@ function TileRank({ n }: { n: number }) {
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
           key={n}
-          initial={{ opacity: 0, y: 8, filter: "blur(2px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -8, filter: "blur(2px)" }}
-          transition={{ duration: 0.28, ease: EASE.reveal }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: DUR.moderate, ease: EASE.reveal }}
           aria-hidden
         >
           {n}
@@ -228,10 +228,10 @@ function TileRank({ n }: { n: number }) {
 }
 
 const swap = {
-  initial: { opacity: 0, filter: "blur(2px)" },
-  animate: { opacity: 1, filter: "blur(0px)" },
-  exit: { opacity: 0, filter: "blur(2px)", transition: { duration: 0.12 } },
-  transition: { duration: 0.2, ease: EASE.snap },
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0, transition: { duration: DUR.fast } },
+  transition: { duration: DUR.normal, ease: EASE.reveal },
 };
 
 function Verdict({ id }: { id: Cause["id"] }) {
@@ -284,7 +284,7 @@ function TileChart({ chart, onOpen }: { chart: CauseChart; onOpen?: () => void }
   const mx = x(POWER_ON.at);
 
   const caption = (
-    <span className="flex items-center gap-1 text-[12px] font-medium leading-4 text-muted-foreground">
+    <span className="type-label flex items-center gap-1 text-muted-foreground">
       {chart.label}
       {onOpen && <Icon src="/figma/whatif/arrow-right.svg" size={12} className="-rotate-45 opacity-70 transition-opacity group-hover:opacity-100" />}
     </span>
@@ -318,7 +318,7 @@ function TileChart({ chart, onOpen }: { chart: CauseChart; onOpen?: () => void }
           fill={`url(#${gid})`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, ease: EASE.reveal, delay: 0.55 }}
+          transition={{ duration: DUR.slow, ease: EASE.reveal, delay: 0.3 }}
         />
         <line x1="0" x2={CW} y1={yLim} y2={yLim} stroke="var(--color-pastel-red)" strokeWidth="1" strokeDasharray="3 3" />
         <motion.path
@@ -330,22 +330,22 @@ function TileChart({ chart, onOpen }: { chart: CauseChart; onOpen?: () => void }
           strokeLinecap="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={{ duration: 0.9, ease: EASE.out, delay: 0.12 }}
+          transition={{ duration: DUR.slow, ease: EASE.reveal, delay: 0.12 }}
         />
       </svg>
 
       <span className="absolute w-px bg-neutral-500/70" style={{ left: mx, top: 4, height: TOP - 4 + PH }} aria-hidden />
-      <span className="absolute top-0 whitespace-nowrap text-[12px] font-medium leading-4 text-foreground-secondary" style={{ left: mx + 6 }}>
+      <span className="absolute top-0 whitespace-nowrap text-[13px] font-medium leading-4 text-foreground-secondary" style={{ left: mx + 6 }}>
         {POWER_ON.label}
       </span>
-      <span className="absolute right-0 text-[12px] font-medium leading-4 text-destructive" style={{ top: labelBelow ? TOP + yLim + 4 : TOP + yLim - 19 }}>
+      <span className="absolute right-0 text-[13px] font-medium leading-4 text-destructive" style={{ top: labelBelow ? TOP + yLim + 4 : TOP + yLim - 19 }}>
         {chart.limit.label}
       </span>
 
-      <span className="absolute left-0 font-mono text-[12px] leading-4 text-subtle-foreground" style={{ top: TOP + PH + 8 }}>
+      <span className="absolute left-0 font-mono text-[13px] leading-4 text-subtle-foreground tabular-nums" style={{ top: TOP + PH + 8 }}>
         11:30
       </span>
-      <span className="absolute right-0 font-mono text-[12px] leading-4 text-subtle-foreground" style={{ top: TOP + PH + 8 }}>
+      <span className="absolute right-0 font-mono text-[13px] leading-4 text-subtle-foreground tabular-nums" style={{ top: TOP + PH + 8 }}>
         13:30
       </span>
     </figure>
@@ -355,7 +355,7 @@ function TileChart({ chart, onOpen }: { chart: CauseChart; onOpen?: () => void }
 /* Same anatomy and height as a tile, so nothing jumps when it resolves. */
 function TileSkeleton() {
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-background shadow-xs" aria-hidden>
+    <div className="flex flex-col rounded-lg border border-border bg-background shadow-xs" aria-hidden>
       <div className="flex items-center gap-3 px-5 pb-1.5 pt-5">
         <span className="flex h-6 flex-1 items-center">
           <span className="shimmer h-3.5 w-[58%] rounded-[4px]" />
@@ -395,10 +395,10 @@ export function CauseRank({ id }: { id: Cause["id"] }) {
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
           key={root ? "check" : id}
-          initial={{ opacity: 0, y: 8, filter: "blur(2px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -8, filter: "blur(2px)" }}
-          transition={{ duration: 0.28, ease: EASE.reveal }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: DUR.moderate, ease: EASE.reveal }}
           className="flex"
           aria-hidden
         >

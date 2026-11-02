@@ -26,7 +26,7 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
         className="flex w-full justify-end"
         initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.28, ease: EASE.snap }}
+        transition={{ duration: DUR.moderate, ease: EASE.reveal }}
         style={{ transformOrigin: "right bottom" }}
       >
         <p className="rounded-[14px] rounded-br-[4px] bg-secondary px-3.5 py-2.5 text-[14px] leading-5 text-foreground">{QUESTION}</p>
@@ -149,9 +149,9 @@ function StreamText({ text, className, delay = 0, as: Tag = "p" }: { text: strin
         <motion.span
           key={i}
           aria-hidden
-          initial={{ opacity: 0, filter: "blur(4px)" }}
-          animate={{ opacity: 1, filter: "blur(0px)" }}
-          transition={{ duration: 0.32, ease: EASE.reveal, delay: delay + i * 0.028 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: delay + i * 0.028 }}
         >
           {w}
           {i < words.length - 1 ? " " : ""}
@@ -170,16 +170,16 @@ function SearchStatus() {
         {folded ? (
           <motion.div
             key="summary"
-            initial={{ opacity: 0, filter: "blur(3px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
-            transition={{ duration: 0.3, ease: EASE.reveal }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: DUR.moderate, ease: EASE.reveal }}
             className="flex items-center gap-2.5 py-1.5"
           >
             <Icon src="/figma/cause/circle-check.svg" size={16} />
             <span className="flex-1 text-[14px] leading-5 text-foreground-secondary">{SEARCH_SUMMARY}</span>
           </motion.div>
         ) : (
-          <motion.div key="steps" exit={{ opacity: 0, filter: "blur(3px)", transition: { duration: 0.16 } }} className="flex flex-col">
+          <motion.div key="steps" exit={{ opacity: 0, transition: { duration: DUR.fast } }} className="flex flex-col">
             {SEARCH_STEPS.map((s, i) => {
               const status = i < state.searchDone ? "done" : i === state.searchDone ? "active" : "pending";
               const label = status === "done" ? s.label : "active" in s && s.active ? s.active : s.label;
@@ -188,7 +188,7 @@ function SearchStatus() {
                   key={s.label}
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: EASE.reveal, delay: 0.25 + i * 0.08 }}
+                  transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.25 + i * 0.08 }}
                   className="flex items-center gap-2.5 py-1.5"
                 >
                   <span className="flex size-4 shrink-0 items-center justify-center">

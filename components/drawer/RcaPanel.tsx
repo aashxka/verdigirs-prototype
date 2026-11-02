@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { DATA_WINDOW, TRACE_META, TRACE_STEPS } from "@/lib/data";
+import { TRACE_META, TRACE_STEPS } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Collapse, Icon, Spinner } from "../ui";
@@ -11,15 +11,15 @@ import { CauseTiles } from "./Causes";
  * simulation and recommended actions open in the side panel. Once a
  * cause is confirmed it heads the list as the likely root cause. */
 export function RcaPanel() {
-  const { state } = usePrototype();
+  const { state, actions } = usePrototype();
   const tracing = !state.traceFolded;
   const rooted = state.root !== null;
   return (
     <div className="flex w-full flex-col">
       <Collapse open={tracing} inMs={300} outMs={260}>
         <motion.div
-          initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
-          animate={tracing ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: -4, filter: "blur(3px)" }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={tracing ? { opacity: 1, y: 0 } : { opacity: 0, y: -4 }}
           transition={{ duration: tracing ? DUR.reveal : 0.2, ease: EASE.reveal, delay: tracing ? 0.15 : 0 }}
           className="flex flex-col gap-4 pb-6"
         >
@@ -29,15 +29,15 @@ export function RcaPanel() {
       </Collapse>
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <h3 className="grid flex-1 text-[16px] font-semibold leading-6 text-foreground">
+        <div className="flex items-baseline gap-2">
+          <h3 className="type-section grid flex-1 text-foreground">
             <AnimatePresence initial={false}>
               <motion.span
                 key={rooted ? "root" : "likely"}
-                initial={{ opacity: 0, filter: "blur(3px)" }}
-                animate={{ opacity: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, filter: "blur(3px)", transition: { duration: 0.12 } }}
-                transition={{ duration: 0.24, ease: EASE.snap }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: { duration: DUR.fast } }}
+                transition={{ duration: DUR.normal, ease: EASE.reveal }}
                 className="[grid-area:1/1]"
               >
                 {rooted ? "Likely root cause" : "Likely causes"}
@@ -46,14 +46,17 @@ export function RcaPanel() {
           </h3>
           <AnimatePresence>
             {state.causesShown > 0 && (
-              <motion.span
+              <motion.button
+                type="button"
+                onClick={actions.toggleThinking}
+                aria-expanded={state.thinking}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, ease: EASE.reveal }}
-                className="text-[12px] leading-4 text-muted-foreground"
+                transition={{ duration: DUR.moderate, ease: EASE.reveal }}
+                className="type-label text-verdigris-on-light underline-offset-4 hover:underline"
               >
-                {DATA_WINDOW}
-              </motion.span>
+                {state.thinking ? "Hide thinking" : "Show thinking"}
+              </motion.button>
             )}
           </AnimatePresence>
         </div>
@@ -83,10 +86,10 @@ function Trace() {
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={status}
-                  initial={{ opacity: 0, scale: 0.6, filter: "blur(2px)" }}
-                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.22, ease: EASE.snap }}
+                  transition={{ duration: DUR.normal, ease: EASE.reveal }}
                   className="flex"
                 >
                   {status === "done" ? (

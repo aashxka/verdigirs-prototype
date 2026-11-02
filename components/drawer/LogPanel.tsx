@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { LOG, LOG_EVENTS, LOG_SEED, RECIPIENTS, causeById, type LogEntry, type LogItem } from "@/lib/data";
-import { EASE } from "@/lib/motion";
+import { DUR, EASE } from "@/lib/motion";
 import { pickedMessages, usePrototype, type Picks } from "@/lib/store";
 import { Badge } from "../ui";
 
@@ -44,8 +44,8 @@ export function LogPanel() {
 
 function sessionEntry(e: LogItem, picks: Picks): LogEntry {
   const id = `${e.key}-${e.cause ?? 0}-${e.time}`;
-  if (e.key === "rule-out" || (e.key === "confirm" && e.cause && e.cause !== 1)) {
-    return { id, time: e.time, ...LOG_EVENTS[e.key], body: `${causeById(e.cause ?? 1).title}.` };
+  if (e.key === "rule-out" || e.key === "confirm") {
+    return { id, time: e.time, ...LOG_EVENTS[e.key], body: `${causeById(e.cause ?? 1).headline}.` };
   }
   if (e.key !== "handoff") return { id, time: e.time, ...LOG_EVENTS[e.key] };
   // The handoff's own entry, written from what was actually sent.
@@ -69,9 +69,9 @@ function Entry({ entry, index, last }: { entry: LogEntry; index: number; last: b
   const delay = 0.06 + Math.min(index, 8) * 0.04;
   return (
     <motion.li
-      initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      transition={{ duration: 0.36, ease: EASE.reveal, delay }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: DUR.slow, ease: EASE.reveal, delay }}
       className={`grid grid-cols-[40px_10px_minmax(0,1fr)] gap-x-3 ${last ? "" : "pb-3"}`}
     >
       <time className="pt-[17px] font-mono text-[12px] leading-5 text-muted-foreground tabular">{entry.time}</time>
@@ -81,7 +81,7 @@ function Entry({ entry, index, last }: { entry: LogEntry; index: number; last: b
           <motion.span
             initial={{ scaleY: 0 }}
             animate={{ scaleY: 1 }}
-            transition={{ duration: 0.4, ease: EASE.reveal, delay: delay + 0.1 }}
+            transition={{ duration: DUR.slow, ease: EASE.reveal, delay: delay + 0.1 }}
             className="absolute left-1/2 w-0.5 -translate-x-1/2 origin-top rounded-full bg-border"
             style={{ top: TITLE_LINE, bottom: -TITLE_LINE }}
           />

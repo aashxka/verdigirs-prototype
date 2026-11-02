@@ -2,8 +2,8 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { DUR, EASE, SPRING, TIMING } from "@/lib/motion";
-import { usePrototype, type Tab, type Toast as ToastT } from "@/lib/store";
+import { DUR, EASE, TWEEN } from "@/lib/motion";
+import { usePrototype, type Tab } from "@/lib/store";
 import { Icon } from "../ui";
 import { ComposerFooter } from "./Composer";
 import { Conversation } from "./Conversation";
@@ -21,17 +21,28 @@ const TABS: { label: string; tab: Tab }[] = [
 ];
 
 const DRAWER_W = 600;
+const FULL_W = DRAWER_W + SIDE_W;
 
 /* Assistant drawer: non-modal, 600px, slides over the alert page.
  * Simulate and Recommend actions widen it leftward by SIDE_W: the
  * main column rides the leading edge, the side panel arrives from
  * the right edge, and the header's close button stays put. The side
- * panel belongs to Root cause, so other tabs narrow it back. */
+ * panel belongs to Root cause, so other tabs narrow it back.
+ * The drawer is always FULL_W wide and only moves (transform only,
+ * per the DS): narrow, its side-panel half waits past the right edge
+ * of the window, and the close button is held back by the same
+ * amount so it never moves. */
 export function AssistantDrawer() {
   const { state, actions } = usePrototype();
   const open = state.drawer === "open";
-  const extended = state.tab === "rca" && state.side !== null;
+  const extended = state.tab === "rca" && (state.side !== null || state.thinking);
   const reduce = useReducedMotion();
+  // Which change the drawer is animating: opening/closing, or making room for the side panel.
+  const [seen, setSeen] = useState({ open, extended, by: "open" as "open" | "side" });
+  if (seen.open !== open || seen.extended !== extended) setSeen({ open, extended, by: seen.open !== open ? "open" : "side" });
+  const slide =
+    seen.by === "open" ? { duration: open ? DUR.drawer : DUR.drawerOut, ease: EASE.reveal } : reduce ? { duration: 0 } : TWEEN.panel;
+  const tuck = extended ? 0 : SIDE_W;
   const scrollRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
 
@@ -67,29 +78,27 @@ export function AssistantDrawer() {
       aria-hidden={!open}
       inert={!open}
       initial={false}
-      animate={{ transform: open ? "translateX(0%)" : "translateX(110%)", width: extended ? DRAWER_W + SIDE_W : DRAWER_W }}
-      transition={{
-        transform: { duration: open ? DUR.drawer : DUR.drawerOut, ease: EASE.reveal },
-        width: reduce ? { duration: 0 } : SPRING.panel,
-      }}
+      animate={{ x: open ? tuck : FULL_W + 48 }}
+      transition={slide}
       className="absolute right-0 top-0 z-20 flex h-full flex-col overflow-hidden border-l border-border bg-background shadow-drawer"
-      style={{ width: DRAWER_W }}
+      style={{ width: FULL_W }}
     >
       <header className="flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
         <h2 className="flex-1 text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
-        <motion.button
-          type="button"
-          onClick={actions.closeDrawer}
-          whileTap={{ scale: 0.94 }}
-          aria-label="Close Signals Assistant"
-          className="flex size-8 items-center justify-center rounded-button transition-colors duration-150 hover:bg-secondary"
-        >
-          <Icon src="/figma/drawer/x.svg" size={16} />
-        </motion.button>
+        <motion.div initial={false} animate={{ x: -tuck }} transition={slide}>
+          <motion.button
+            type="button"
+            onClick={actions.closeDrawer}
+            whileTap={{ scale: 0.94 }}
+            aria-label="Close Signals Assistant"
+            className="flex size-8 items-center justify-center rounded-button transition-colors duration-150 hover:bg-secondary"
+          >
+            <Icon src="/figma/drawer/x.svg" size={16} />
+          </motion.button>
+        </motion.div>
       </header>
 
-      {/* Fixed-width strip, so nothing reflows while the drawer widens. */}
-      <div className="flex min-h-0 flex-1 self-start" style={{ width: DRAWER_W + SIDE_W }}>
+      <div className="flex min-h-0 flex-1">
         <div className="relative flex h-full shrink-0 flex-col" style={{ width: DRAWER_W }}>
           <nav className="flex h-12 w-full shrink-0 items-end gap-6 border-b border-border px-6" aria-label="Assistant sections">
             {TABS.map(({ label, tab }) => {
@@ -137,50 +146,10 @@ export function AssistantDrawer() {
           </div>
 
           <ComposerFooter />
-          <ToastHost />
         </div>
         <SidePanel shown={open && extended} />
       </div>
     </motion.aside>
-  );
-}
-
-function ToastHost() {
-  const { state } = usePrototype();
-  return (
-    // Bottom of the page, centred on the Assistant's main column; it rides over the composer briefly.
-    <div className="pointer-events-none absolute inset-x-0 bottom-5 z-10 flex justify-center">
-      <AnimatePresence>{state.toast && <ToastView key={state.toast.id} toast={state.toast} />}</AnimatePresence>
-    </div>
-  );
-}
-
-function ToastView({ toast }: { toast: ToastT }) {
-  const { actions } = usePrototype();
-  const [hover, setHover] = useState(false);
-  useEffect(() => {
-    if (hover) return;
-    const t = setTimeout(() => actions.dismissToast(toast.id), TIMING.toastLife);
-    return () => clearTimeout(t);
-  }, [hover, toast.id, actions]);
-  return (
-    <motion.div
-      role="status"
-      initial={{ opacity: 0, y: 10, scale: 0.97, filter: "blur(4px)" }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, y: 6, scale: 0.98, transition: { duration: DUR.toastOut, ease: EASE.standard } }}
-      transition={{ duration: DUR.toastIn, ease: EASE.reveal }}
-      onHoverStart={() => setHover(true)}
-      onHoverEnd={() => setHover(false)}
-      className="pointer-events-auto flex items-center gap-4 whitespace-nowrap rounded-lg bg-primary px-4 py-3 text-[14px] leading-5 text-primary-foreground shadow-toast"
-    >
-      <span>{toast.text}</span>
-      {toast.undo && (
-        <button type="button" onClick={() => actions.undo(toast)} className="font-medium underline underline-offset-2 transition-opacity hover:opacity-80">
-          Undo
-        </button>
-      )}
-    </motion.div>
   );
 }
 
@@ -194,10 +163,10 @@ export function AssistantMinimized() {
           key="min"
           initial={{ opacity: 0, y: 12, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 8, scale: 0.98, transition: { duration: 0.15 } }}
-          transition={{ duration: 0.3, ease: EASE.reveal, delay: 0.1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.98, transition: { duration: DUR.fast } }}
+          transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.1 }}
           style={{ transformOrigin: "right bottom" }}
-          className="absolute bottom-10 right-5 z-20 flex items-center gap-4 rounded-[12px] border border-border bg-white py-3 pl-4 pr-3 shadow-[0_1px_1.5px_rgba(0,0,0,0.06),0_8px_12px_rgba(0,0,0,0.12)]"
+          className="absolute bottom-10 right-5 z-20 flex items-center gap-4 rounded-lg border border-border bg-popover py-3 pl-4 pr-3 shadow-md"
         >
           <span className="text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</span>
           <motion.button

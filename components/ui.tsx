@@ -59,12 +59,12 @@ export function ConfidenceLabel({ level, label }: { level: Confidence; label?: s
           <span key={h} className={`w-[3px] rounded-[1px] ${i < tone.lit ? tone.bar : tone.off}`} style={{ height: h }} />
         ))}
       </span>
-      <span className={`text-[12px] font-medium leading-4 ${tone.text}`}>{label ?? level}</span>
+      <span className={`text-[13px] font-medium leading-4 ${tone.text}`}>{label ?? level}</span>
     </span>
   );
 }
 
-/* Badge — 20px, radius 6, Medium 12. */
+/* Badge — 20px, radius 6, Medium 13 (DS caption). */
 export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "teal" | "warning" | "danger" | "muted"; children: React.ReactNode }) {
   const cls = {
     neutral: "bg-secondary text-foreground-secondary",
@@ -73,7 +73,7 @@ export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "teal
     warning: "bg-warning-bg text-warning-fg",
     danger: "bg-pastel-red-subtle text-pastel-red",
   }[tone];
-  return <span className={`inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-[6px] px-2 text-[12px] font-medium leading-4 ${cls}`}>{children}</span>;
+  return <span className={`inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-[6px] px-2 text-[13px] font-medium leading-4 ${cls}`}>{children}</span>;
 }
 
 export function Spinner({ size = 16, light = false }: { size?: number; light?: boolean }) {
@@ -126,7 +126,7 @@ export function Button({
     <motion.button
       type="button"
       whileTap={disabled || loading ? undefined : { scale: 0.97 }}
-      transition={{ duration: DUR.press, ease: EASE.out }}
+      transition={{ duration: DUR.press, ease: EASE.standard }}
       onClick={(e) => {
         e.stopPropagation();
         if (!disabled && !loading) onClick?.();
@@ -189,8 +189,8 @@ export function Checkbox({ checked }: { checked: boolean }) {
             key="check"
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.1 } }}
-            transition={{ duration: 0.18, ease: EASE.snap }}
+            exit={{ opacity: 0, scale: 0.6, transition: { duration: DUR.fast } }}
+            transition={{ duration: DUR.normal, ease: EASE.reveal }}
             className="flex"
           >
             <Icon src="/figma/handoff/check.svg" size={12} />

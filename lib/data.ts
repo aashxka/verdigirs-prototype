@@ -97,53 +97,106 @@ export const CAUSES: Cause[] = [
 
 export const causeById = (id: Cause["id"]) => CAUSES.find((c) => c.id === id)!;
 
-export const DATA_WINDOW = "Data from 11:30–13:30";
 
 /* Investigation trace (DS: Drawer content / RCA – Loading) */
 export const TRACE_META = "Checking data from 11:30 to 13:30 on PDU-01-A9F and UPS-2.";
 export const TRACE_STEPS = [
   { label: "Read alert on PDU-01-A9F", time: "0.4s" },
-  { label: "Pulled 24h of PDU-01-A9F and UPS-2 readings", time: "1.8s" },
+  { label: "Pulled 24h of PDU-01-A9F, UPS-2 and Panel B readings", time: "1.8s" },
   { label: "Checked change log for this panel", time: "0.9s" },
   { label: "Compared with 14 past incidents on this panel", active: "Comparing with 14 past incidents on this panel", time: "2.6s" },
   { label: "Checked maintenance records", active: "Checking maintenance records", time: "0.7s" },
   { label: "Ranked likely causes", active: "Ranking likely causes", time: "1.1s" },
 ] as const;
 
-/* Expanded cause #1 (02.3 / 02.4) */
-export const CAUSE_SUMMARY =
-  "Rack 14’s 12 new servers came online at 12:22. Their switch-mode power supplies pushed Phase A THDi from 3% to 180% within 8 minutes. This matches 2 past incidents on this panel.";
+/* Show thinking (side panel): the trace above, step by step, with what
+ * each step looked at and what it found. Titles and times are the
+ * trace's own. Findings restate the causes, the Mar 14 match and the
+ * Related issues records; nothing here is new. Sources with a link
+ * open that place in the prototype. */
+export type ThinkingIcon = "alert" | "readings" | "change" | "incidents" | "records" | "rank";
+export type ThinkingLink = { kind: "signals" } | { kind: "issue"; id: string };
+export type ThinkingSource = { label: string; link?: ThinkingLink };
+export type Finding = { result: "supported" | "checked" | "ruled-out"; text: string };
+export type ThinkingStep = {
+  icon: ThinkingIcon;
+  title: string;
+  time: string;
+  sources: ThinkingSource[];
+  findings: Finding[];
+  ranked?: { cause: Cause["id"]; why: string }[];
+};
 
-export const EVIDENCE = [
-  { title: "THDi on Phase A rose from 3% to 180%", meta: "PDU-01-A9F sensor at 12:22–12:30", opensSignals: true },
-  { title: "Rack 14: 12 servers powered on", meta: "Change log · CHG-2291 at 12:22", opensSignals: false },
-  { title: "Same harmonic pattern on this panel", meta: "Incident #482 · Mar 14, 2026", opensSignals: false },
+export const THINKING_INTRO = "What the Assistant checked, in order. Open a step to see what it found.";
+
+const THINKING_DETAIL: Omit<ThinkingStep, "title" | "time">[] = [
+  {
+    icon: "alert",
+    sources: [{ label: "PDU-01-A9F alert" }],
+    findings: [
+      { result: "checked", text: "Phase A THDi crossed the 5% limit at 12:24." },
+      { result: "checked", text: "Current peaked at 12:30, 16% above its 50 A threshold." },
+    ],
+  },
+  {
+    icon: "readings",
+    sources: [{ label: "PDU-01-A9F sensor", link: { kind: "signals" } }, { label: "UPS-2 waveform" }, { label: "Panel B sensor" }],
+    findings: [
+      { result: "supported", text: "Phase A THDi rose from 3% to 180% between 12:22 and 12:30." },
+      { result: "checked", text: "Phases B and C stayed under 6%." },
+      { result: "checked", text: "UPS-2 ripple crept up from 2% to 6% after 12:22." },
+      { result: "checked", text: "Panel B’s Phase A imbalance didn’t change at 12:22." },
+      { result: "ruled-out", text: "The room held 22–23 °C, so heat isn’t a factor." },
+    ],
+  },
+  {
+    icon: "change",
+    sources: [{ label: "CHG-2291" }],
+    findings: [{ result: "supported", text: "Rack 14 powered on 12 new servers at 12:22, 2 min before THDi crossed 5%." }],
+  },
+  {
+    icon: "incidents",
+    sources: [
+      { label: "Mar 14 harmonic spike", link: { kind: "issue", id: "harmonic-spike" } },
+      { label: "Incident #482", link: { kind: "issue", id: "ups2-capacitor" } },
+    ],
+    findings: [
+      { result: "supported", text: "Mar 14 matches today: rack 9’s new servers pushed THDi to 165%." },
+      { result: "checked", text: "UPS-2 failed 6 h after that spike (#482)." },
+    ],
+  },
+  {
+    icon: "records",
+    sources: [{ label: "Maintenance records" }],
+    findings: [
+      { result: "checked", text: "UPS-2’s capacitor bank was replaced after #482 on Mar 14." },
+      { result: "checked", text: "A fan replacement on PDU-01-A9F has been open since May 3." },
+    ],
+  },
+  {
+    icon: "rank",
+    sources: [],
+    findings: [],
+    ranked: [
+      { cause: 1, why: "The servers came on 2 min before the rise, the sensors agree, and it matches Mar 14." },
+      { cause: 2, why: "Ripple is 6% and failures start at 15%, so wear alone doesn’t explain the spike." },
+      { cause: 3, why: "It started 3 days before the spike and didn’t change at 12:22." },
+    ],
+  },
 ];
 
-export const REASONING = {
-  checked: {
-    title: "What was checked",
-    body: "11:30–13:30 on PDU-01-A9F, UPS-2 and Panel B · 4 data sources · 14 past incidents",
-  },
-  why: ["Event timing aligns within 40s.", "3 of 3 independent sources agree.", "Matches 2 confirmed past incidents."],
-  steps: [
-    { result: "supported", title: "Phase A THDi crossed the 5% limit at 12:24", body: "Rose from 3% to 180% in 8 min. Phases B and C stayed under 6%." },
-    { result: "supported", title: "Rack 14 powered on 12 servers at 12:22", body: "Change CHG-2291 started 2 min before the rise. Timing matches within 40s." },
-    { result: "checked", title: "Compared with 14 past incidents on this panel", body: "2 matched this harmonic pattern; both traced to new switch-mode PSU loads." },
-    { result: "ruled-out", title: "UPS-2 rectifier wear is less likely", body: "Ripple rose 4%, below the 15% seen in capacitor failures. Kept as a possible cause." },
-    { result: "ruled-out", title: "Ambient temperature", body: "Room held 22–23 °C; no thermal correlation." },
-  ],
-} as const;
+export const THINKING: ThinkingStep[] = TRACE_STEPS.map((s, i) => ({ title: s.label, time: s.time, ...THINKING_DETAIL[i] }));
 
-/* Recommended steps. Before a cause is confirmed the Assistant
- * suggests triage (DS: RCA – Results). Once cause #1 is confirmed
- * there is nothing left to verify, so the steps turn to the fix,
- * keep the escalation (the UPS-2 risk hasn't changed), and watch
- * the UPS-2 rectifier that the harmonics are wearing down. */
+/* Recommended steps, shown as a table: the action, why it's worth
+ * doing (a few words), and its button. Before a cause is confirmed
+ * the Assistant suggests triage (DS: RCA – Results). Once cause #1
+ * is confirmed there is nothing left to verify, so the steps turn to
+ * the fix, keep the escalation (the UPS-2 risk hasn't changed), and
+ * watch the UPS-2 rectifier that the harmonics are wearing down. */
 export type Step = {
   key: string;
   title: string;
-  body: string;
+  why: string;
   tag?: string;
   cta: string;
   ctaKind: "primary" | "secondary";
@@ -155,32 +208,32 @@ export type Step = {
 const ESCALATE: Step = {
   key: "escalate",
   title: "Escalate to facilities lead",
-  body: "UPS-2 has a 76% chance of failing in the next 6 h if the load stays.",
+  why: "76% UPS-2 failure risk",
   cta: "Escalate",
   ctaKind: "secondary",
   done: "Escalated",
-  toast: "Escalated to the facilities lead",
+  toast: "Escalated to Jordan Lee, facilities lead",
 };
 
 const INSPECT_UPS: Step = {
   key: "inspect-ups",
   title: "Inspect UPS-2 rectifier",
-  body: "Rack 14’s harmonics are wearing its capacitors. Marco Diaz is free Tue 09:00.",
+  why: "Harmonics are wearing it",
   cta: "Schedule",
   ctaKind: "secondary",
-  done: "Scheduled · Tue 09:00",
-  toast: "Maintenance scheduled with Marco Diaz for Tue, Oct 20, 09:00–10:30",
+  done: "Scheduled Tue 09:00",
+  toast: "UPS-2 inspection scheduled with Marco Diaz, Tue Oct 20, 09:00–10:30",
   opensDialog: true,
 };
 
 export const TRIAGE_STEPS: Step[] = [
   {
     key: "task",
-    title: "Inspect non-linear loads on rack 14",
-    body: "Confirms this cause on site in about 5 min",
+    title: "Inspect rack 14’s loads",
+    why: "5-min check on site",
     cta: "Create task",
     ctaKind: "primary",
-    done: "Task T-2214 created",
+    done: "T-2214 created",
     toast: "Task T-2214 created for the rack 14 inspection",
   },
   ESCALATE,
@@ -190,7 +243,7 @@ export const CONFIRMED_STEPS: Step[] = [
   {
     key: "move-load",
     title: "Move rack 14 load to PDU-02",
-    body: "Brings Phase A THDi under 5%. UPS-2 failure odds drop from 76% to 12%.",
+    why: "Risk 76% → 12%",
     cta: "Create work order",
     ctaKind: "primary",
     done: "WO-1182 created",
@@ -208,36 +261,36 @@ export type CauseActions = { intro: string; steps: Step[]; confirmed?: { intro: 
 
 export const CAUSE_ACTIONS: Record<Cause["id"], CauseActions> = {
   1: {
-    intro: "These check the cause on site. Confirm it to get the fix.",
+    intro: "Check this on site first. Confirm it to see the fix.",
     steps: TRIAGE_STEPS,
-    confirmed: { intro: "Fix steps for the root cause you confirmed.", steps: CONFIRMED_STEPS },
+    confirmed: { intro: "The fix for the root cause you confirmed.", steps: CONFIRMED_STEPS },
   },
   2: {
     intro: "Check the capacitors first, then take load off UPS-2.",
     steps: [
-      { ...INSPECT_UPS, ctaKind: "primary", body: "Measures capacitor wear against incident #482. Marco Diaz is free Tue 09:00." },
+      { ...INSPECT_UPS, title: "Inspect UPS-2 capacitors", ctaKind: "primary", why: "Compares wear with #482" },
       {
         key: "shift-ups",
-        title: "Shift 15% of UPS-2’s load to UPS-1",
-        body: "Keeps N+1. UPS-2 failure odds drop from 76% to 64%.",
+        title: "Shift 15% of UPS-2 load to UPS-1",
+        why: "Risk 76% → 64%",
         cta: "Create work order",
         ctaKind: "secondary",
-        done: "Work order created",
+        done: "Created",
         toast: "Work order created to shift 15% of UPS-2’s load to UPS-1",
       },
       ESCALATE,
     ],
   },
   3: {
-    intro: "Fixing this won’t change UPS-2’s failure odds.",
+    intro: "Fixing this won’t change UPS-2’s failure risk.",
     steps: [
       {
         key: "rebalance",
         title: "Rebalance Panel B circuits",
-        body: "Spreads Phase A’s extra load across B and C.",
+        why: "Evens out Phase A",
         cta: "Create task",
         ctaKind: "primary",
-        done: "Task created",
+        done: "Created",
         toast: "Task created to rebalance Panel B circuits",
       },
       ESCALATE,
@@ -289,7 +342,7 @@ export const ANSWER = {
     meta: "Incident #482 · Mar 14, 2026",
     status: "Resolved",
   },
-  whatIfTitle: "Failure odds · next 6 h",
+  whatIfTitle: "What a fix would do",
 };
 
 /* What-if simulator. Values per stop combination come from the
@@ -397,9 +450,12 @@ const DID: Record<Exclude<LogKey, "handoff" | "confirm" | "rule-out">, string> =
   rebalance: "Opened a task to rebalance Panel B circuits",
 };
 
+/* Mid-sentence cause names: "Phase A…" → "phase A…", but "UPS-2…" stays. */
+const midSentence = (s: string) => (/^[A-Z][a-z]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
+
 function didText(e: LogItem) {
-  if (e.key === "confirm") return e.cause && e.cause !== 1 ? `Confirmed ${causeById(e.cause).title.toLowerCase()} as the cause` : "Confirmed rack 14’s new servers as the cause";
-  if (e.key === "rule-out") return `Ruled out ${causeById(e.cause ?? 1).title.toLowerCase()}`;
+  if (e.key === "confirm") return e.cause && e.cause !== 1 ? `Confirmed ${midSentence(causeById(e.cause).title)} as the cause` : "Confirmed rack 14’s new servers as the cause";
+  if (e.key === "rule-out") return `Ruled out ${midSentence(causeById(e.cause ?? 1).title)}`;
   return DID[e.key as keyof typeof DID];
 }
 
@@ -687,17 +743,17 @@ export const LOG_SEED: LogEntry[] = [
 ];
 
 /* Session events. "handoff" is written from what was sent (LogPanel);
- * confirm and rule-out swap in the cause's name when it isn't rack 14. */
+ * confirm and rule-out take the cause's plain-language headline. */
 export const LOG_EVENTS: Record<Exclude<LogKey, "handoff">, Omit<LogEntry, "id" | "time">> = {
   analysis: {
     title: "Root cause analysis",
-    body: "Ranked 3 likely causes. Top: non-linear load switching on PDU-01-A9F (High).",
+    body: "Ranked 3 likely causes. Most likely: rack 14 is overloading PDU-01-A9F.",
     who: "Signals Assistant · started by you",
     ai: true,
   },
   confirm: {
     title: "Root cause confirmed",
-    body: "Non-linear load switching from rack 14’s new servers.",
+    body: "",
     who: "You",
   },
   "rule-out": {
