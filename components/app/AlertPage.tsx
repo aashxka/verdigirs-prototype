@@ -63,13 +63,13 @@ export function AlertPage({ investigating, onInvestigate }: { investigating: boo
 
 function Inbox() {
   return (
-    <aside className="flex h-full w-[363px] shrink-0 flex-col overflow-hidden bg-surface-subtle p-px" aria-label="Inbox">
+    <aside className="flex h-full w-[320px] shrink-0 flex-col overflow-hidden bg-surface-subtle p-px" aria-label="Inbox">
       <div className="flex h-12 items-center justify-between border-b border-border px-5">
         <h2 className="font-lato text-[20px] font-bold leading-none tracking-[0.07px] text-foreground">Inbox</h2>
         <SegmentedPair left="Alerts" right="Handoff notes" />
       </div>
-      <div className="flex items-center justify-between border-b border-border px-[15px] py-3">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between border-b border-border px-3 py-3">
+        <div className="flex items-center gap-1.5">
           <FilterSelect label="Severity" />
           <FilterSelect label="Status" />
         </div>

@@ -1,38 +1,79 @@
 "use client";
 
-import { motion } from "motion/react";
-import { LOG, LOG_EVENTS, LOG_SEED, RECIPIENTS, causeById, type LogEntry, type LogItem } from "@/lib/data";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { LOG, LOG_EVENTS, LOG_SEED, LOG_SORTS, RECIPIENTS, causeById, type LogEntry, type LogItem, type LogOrder } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { pickedMessages, usePrototype, type Picks } from "@/lib/store";
 import { Badge } from "../ui";
+import { Menu, MenuItem, Trigger, useFlip } from "./RelatedPanel";
 
 /* Log tab (03 · Log, 08.1). A read-only timeline of the alert,
- * newest first: nothing here is interactive, it only scrolls.
- * Below the alert itself, every entry is something this session
- * did, so new ones land on top as you work (a sent handoff too,
- * as its toast promises). Mounts on first open, so the entries
- * there settle in once. */
+ * newest first; the Sort pill (the Related issues dropdown) turns it
+ * round, and entries slide to their new place. Below the alert
+ * itself, every entry is something this session did, so new ones
+ * land on top as you work (a sent handoff too, as its toast
+ * promises). Mounts on first open, so the entries there settle in
+ * once. */
 export function LogPanel() {
   const { state } = usePrototype();
-  const entries = [...state.log.map((e) => sessionEntry(e, state.picks)).reverse(), ...LOG_SEED];
+  const [order, setOrder] = useState<LogOrder>("newest");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const newest = [...state.log.map((e) => sessionEntry(e, state.picks)).reverse(), ...LOG_SEED];
+  const entries = order === "newest" ? newest : [...newest].reverse();
+  const sortRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLOListElement>(null);
+  const capture = useFlip(listRef, entries.map((e) => e.id).join(","));
+
+  // The menu closes on Escape or a click anywhere outside it.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!sortRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-[18px] font-semibold leading-7 text-foreground">Log</h3>
-        <p className="text-[14px] leading-5 text-muted-foreground">{LOG.intro}</p>
-      </div>
+      <h3 className="text-[18px] font-semibold leading-7 text-foreground">Log</h3>
 
       <section className="flex flex-col gap-3" aria-labelledby="log-day">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2">
           <h4 id="log-day" className="flex-1 text-[16px] font-semibold leading-6 text-foreground">
             {LOG.day}
           </h4>
-          <span className="text-[12px] leading-4 text-muted-foreground">
-            {entries.length} entries, {LOG.order}
-          </span>
+          <div ref={sortRef} className="relative">
+            <Trigger label="Sort:" value={LOG_SORTS.find((s) => s.key === order)!.label} open={menuOpen} onClick={() => setMenuOpen(!menuOpen)} />
+            <AnimatePresence>
+              {menuOpen && (
+                <Menu label="Sort the log" align="right" width={180}>
+                  {LOG_SORTS.map((s) => (
+                    <MenuItem
+                      key={s.key}
+                      label={s.label}
+                      selected={s.key === order}
+                      onSelect={() => {
+                        if (s.key !== order) capture();
+                        setOrder(s.key);
+                        setMenuOpen(false);
+                      }}
+                    />
+                  ))}
+                </Menu>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-        <ol className="flex flex-col">
+        <ol ref={listRef} className="flex flex-col">
           {entries.map((entry, i) => (
             <Entry key={entry.id} entry={entry} index={i} last={i === entries.length - 1} />
           ))}
@@ -69,6 +110,7 @@ function Entry({ entry, index, last }: { entry: LogEntry; index: number; last: b
   const delay = 0.06 + Math.min(index, 8) * 0.04;
   return (
     <motion.li
+      data-flip={entry.id}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: DUR.slow, ease: EASE.reveal, delay }}

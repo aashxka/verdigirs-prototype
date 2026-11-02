@@ -29,7 +29,7 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
         transition={{ duration: DUR.moderate, ease: EASE.reveal }}
         style={{ transformOrigin: "right bottom" }}
       >
-        <p className="rounded-[14px] rounded-br-[4px] bg-secondary px-3.5 py-2.5 text-[14px] leading-5 text-foreground">{QUESTION}</p>
+        <p className="type-body rounded-[14px] rounded-br-[4px] bg-secondary px-3.5 py-2.5 text-foreground">{QUESTION}</p>
       </motion.div>
 
       <div className="flex w-full flex-col gap-8" aria-live="polite">
@@ -39,8 +39,8 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
             {shown >= 1 && (
               <Block key="lead">
                 <div className="flex flex-col gap-1">
-                  <StreamText as="h4" className={HEADING} text={ANSWER.leadTitle} />
-                  <StreamText className="text-pretty text-[14px] leading-5 text-foreground-secondary" text={ANSWER.leadBody} delay={0.12} />
+                  <StreamText as="h4" className={`type-section ${HEADING}`} text={ANSWER.leadTitle} />
+                  <StreamText className="type-body text-pretty text-foreground-secondary" text={ANSWER.leadBody} delay={0.12} />
                 </div>
               </Block>
             )}
@@ -55,7 +55,7 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
                     <div key={r.rank} className={`flex items-start gap-3 p-4 ${i < ANSWER.related.length - 1 ? "border-b border-border" : ""}`}>
                       <CauseRank id={r.rank} />
                       <span className="flex min-w-0 flex-1 flex-col gap-2">
-                        <span className="flex flex-col gap-1 text-[14px] leading-5">
+                        <span className="type-body flex flex-col">
                           <span className="font-medium text-foreground">{r.cause}</span>
                           <span className="text-muted-foreground">{r.note}</span>
                         </span>
@@ -74,13 +74,13 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
             <Block key="past">
               <Section title={ANSWER.pastTitle}>
                 <div className="overflow-hidden rounded-lg border border-border bg-background">
-                  <div className={`${MATCH_ROW} border-b border-border bg-surface-subtle py-2 text-[12px] font-medium leading-4 text-muted-foreground`}>
+                  <div className={`${MATCH_ROW} type-label border-b border-border bg-surface-subtle py-2 text-muted-foreground`}>
                     <span>Signal</span>
                     <span>Today</span>
                     <span>Mar 14</span>
                   </div>
                   {ANSWER.match.map((m) => (
-                    <div key={m.signal} className={`${MATCH_ROW} border-b border-border py-2.5 text-[14px] leading-5 text-foreground`}>
+                    <div key={m.signal} className={`${MATCH_ROW} type-body border-b border-border py-2 text-foreground`}>
                       <span className="text-foreground-secondary">{m.signal}</span>
                       <span className="tabular">{m.today}</span>
                       <span className="tabular">{m.past}</span>
@@ -89,10 +89,10 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
                   <div className="flex items-center gap-3 px-4 py-3">
                     <Icon src="/figma/drawer/history.svg" size={16} />
                     <span className="flex min-w-0 flex-1 flex-col gap-1">
-                      <span className="text-[14px] font-medium leading-5 text-foreground">{ANSWER.pastIssue.title}</span>
+                      <span className="type-body font-medium text-foreground">{ANSWER.pastIssue.title}</span>
                       <span className="font-mono text-[12px] leading-4 text-foreground-tertiary">{ANSWER.pastIssue.meta}</span>
                     </span>
-                    <span className="inline-flex h-5 items-center gap-1 rounded-[6px] bg-accent-muted pl-1.5 pr-2 text-[12px] font-medium leading-4 text-verdigris-on-light">
+                    <span className="inline-flex h-5 items-center gap-1 rounded-[6px] bg-accent-muted pl-1.5 pr-2 text-[13px] font-medium leading-4 text-verdigris-on-light">
                       <Icon src="/figma/chat/resolved-dot.svg" size={6} />
                       {ANSWER.pastIssue.status}
                     </span>
@@ -118,15 +118,19 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
   );
 }
 
-/* Answer type: 20 headings over 14 body. Sections sit 32 apart
- * with 12 between heading and content, like the RCA panel. */
-const HEADING = "text-balance text-[20px] font-semibold leading-7 text-foreground";
+/* Answer type, on the Verdigris type roles (globals.css): the lead
+ * is the answer, so it alone takes the section headline (18/28);
+ * sections step down to titles (16/24); prose and rows are body-small
+ * at 1.6 (14/22); labels are caption (13); times and IDs are 12px
+ * mono, as in the trace and Related issues. Sections sit 32 apart
+ * with 12 between heading and content. */
+const HEADING = "text-balance text-foreground";
 const MATCH_ROW = "grid grid-cols-[minmax(0,1fr)_140px_140px] gap-3 px-4";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h4 className={HEADING}>{title}</h4>
+      <h4 className={`type-title ${HEADING}`}>{title}</h4>
       {children}
     </section>
   );
@@ -207,7 +211,7 @@ function SearchStatus() {
                   >
                     {label}
                   </span>
-                  <span className="font-mono text-[11px] text-subtle-foreground tabular">{status === "done" ? s.time : ""}</span>
+                  <span className="font-mono text-[12px] text-subtle-foreground tabular">{status === "done" ? s.time : ""}</span>
                 </motion.div>
               );
             })}

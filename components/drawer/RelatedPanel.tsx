@@ -185,7 +185,7 @@ function arrange(issues: RelatedIssue[], sort: SortKey): { label: string | null;
  * or filter change; when the arrangement changes, rows slide from
  * there to their new place and new rows fade in. offsetTop is
  * layout px, so this stays correct inside the scaled stage. */
-function useFlip(container: React.RefObject<HTMLDivElement | null>, arrangement: string) {
+export function useFlip(container: React.RefObject<HTMLElement | null>, arrangement: string) {
   const first = useRef<{ tops: Map<string, number>; height: number } | null>(null);
   const capture = () => {
     const el = container.current;
@@ -319,7 +319,7 @@ function StatusChip({ status }: { status: IssueStatus }) {
 }
 
 /* DS: Dropdown trigger — "Label: Value ⌄". */
-function Trigger({ label, value, open, onClick }: { label: string; value: string; open: boolean; onClick: () => void }) {
+export function Trigger({ label, value, open, onClick }: { label: string; value: string; open: boolean; onClick: () => void }) {
   return (
     <motion.button
       type="button"
@@ -348,7 +348,7 @@ const surface = {
   exit: { opacity: 0, scale: 0.98, transition: { duration: DUR.dialogOut, ease: EASE.standard } },
 };
 
-function Menu({ label, align, width, children }: { label: string; align: "left" | "right"; width: number; children: React.ReactNode }) {
+export function Menu({ label, align, width, children }: { label: string; align: "left" | "right"; width: number; children: React.ReactNode }) {
   return (
     <motion.div
       role="menu"
@@ -365,7 +365,7 @@ function Menu({ label, align, width, children }: { label: string; align: "left" 
 }
 
 /* DS: Menu item — check, label, optional detail. */
-function MenuItem({ label, detail, selected, onSelect }: { label: string; detail?: string; selected: boolean; onSelect: () => void }) {
+export function MenuItem({ label, detail, selected, onSelect }: { label: string; detail?: string; selected: boolean; onSelect: () => void }) {
   return (
     <button
       type="button"

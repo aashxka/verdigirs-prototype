@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { DUR, EASE, TWEEN } from "@/lib/motion";
 import { usePrototype, type Tab } from "@/lib/store";
-import { Icon } from "../ui";
+import { Icon, PanelIcon } from "../ui";
 import { ComposerFooter } from "./Composer";
 import { Conversation } from "./Conversation";
 import { HandoffPanel } from "./HandoffPanel";
@@ -83,8 +83,31 @@ export function AssistantDrawer() {
       className="absolute right-0 top-0 z-20 flex h-full flex-col overflow-hidden border-l border-border bg-background shadow-drawer"
       style={{ width: FULL_W }}
     >
-      <header className="flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
+      <header className="relative flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
         <h2 className="flex-1 text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
+        {/* The side panel's thinking link, on the header's line and over
+            the panel it controls (its content's 24px inset). Show over a
+            cause's boxes, Hide over Thinking (back to the boxes, or the
+            panel closes). top 22px puts its baseline on the title's. */}
+        <AnimatePresence initial={false}>
+          {extended && (
+            <motion.button
+              key="thinking-link"
+              type="button"
+              onClick={state.thinking ? actions.hideThinking : actions.showThinking}
+              aria-pressed={state.thinking}
+              aria-controls="assistant-side-panel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: DUR.fast } }}
+              transition={{ duration: DUR.normal, ease: EASE.reveal, delay: 0.1 }}
+              className="type-label absolute top-[22px] text-verdigris-on-light underline-offset-4 hover:underline"
+              style={{ left: DRAWER_W + 24 }}
+            >
+              {state.thinking ? "Hide thinking" : "Show thinking"}
+            </motion.button>
+          )}
+        </AnimatePresence>
         <motion.div initial={false} animate={{ x: -tuck }} transition={slide}>
           <motion.button
             type="button"
@@ -126,6 +149,33 @@ export function AssistantDrawer() {
                 </button>
               );
             })}
+            {/* Side panel button (DS icon button, ghost, 36px) on the tab
+                bar's right edge: opens the panel on Thinking. While the
+                panel is out, its own close button is the only one, so
+                this one steps aside. Root cause only, once the analysis
+                has finished. */}
+            <AnimatePresence initial={false}>
+              {state.tab === "rca" && !extended && (
+                <motion.button
+                  key="panel-open"
+                  type="button"
+                  onClick={actions.showThinking}
+                  disabled={state.analysis !== "done"}
+                  aria-expanded={false}
+                  aria-controls="assistant-side-panel"
+                  aria-label="Open side panel"
+                  title="Open side panel"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: DUR.fast } }}
+                  whileTap={state.analysis === "done" ? { scale: 0.94 } : undefined}
+                  transition={{ duration: DUR.normal, ease: EASE.reveal }}
+                  className="-mr-2 ml-auto flex size-9 shrink-0 items-center justify-center self-center rounded-button text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <PanelIcon open={false} />
+                </motion.button>
+              )}
+            </AnimatePresence>
           </nav>
 
           <div ref={scrollRef} className="scroll-quiet relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden">
@@ -146,6 +196,15 @@ export function AssistantDrawer() {
           </div>
 
           <ComposerFooter />
+          {/* DS Separator (design.verdigris.co/categories/web-components/layout):
+              a vertical 1px bg-border line on the column's right edge, shown
+              while the side panel is out. It starts under the 48px tab row,
+              so the tab bar and the panel's header read as one toolbar. */}
+          <div
+            data-slot="separator"
+            role="none"
+            className={`pointer-events-none absolute bottom-0 right-0 top-12 z-[1] w-px bg-border transition-opacity duration-200 ${extended ? "opacity-100" : "opacity-0"}`}
+          />
         </div>
         <SidePanel shown={open && extended} />
       </div>

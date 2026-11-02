@@ -389,15 +389,29 @@ export function riskFor(odds: number): Confidence {
  * which keeps N+1). The follow-up found #3 isn't linked to UPS-2
  * wear, so fixing it leaves the odds where they are. */
 export type Lever = "rack" | "ups";
-export type CauseOdds = { lever: Lever | null; preset: number; fix: string; note?: string };
+/* line is the tile card's description: what the odds are and the fix
+ * they follow from, as one sentence that fits one line of the card
+ * (452px at 14px; "in 6 hours" keeps the longest at 437px). */
+export type CauseOdds = { lever: Lever | null; preset: number; fix: string; line: string; note?: string };
 
 export const CAUSE_ODDS: Record<Cause["id"], CauseOdds> = {
-  1: { lever: "rack", preset: 3, fix: "if rack 14’s load moves to PDU-02" },
-  2: { lever: "ups", preset: 1, fix: "if 15% of UPS-2’s load shifts to UPS-1" },
+  1: {
+    lever: "rack",
+    preset: 3,
+    fix: "if rack 14’s load moves to PDU-02",
+    line: "UPS-2 failure risk in 6 hours if rack 14’s load moves to PDU-02",
+  },
+  2: {
+    lever: "ups",
+    preset: 1,
+    fix: "if 15% of UPS-2’s load shifts to UPS-1",
+    line: "UPS-2 failure risk in 6 hours if 15% of UPS-2’s load shifts to UPS-1",
+  },
   3: {
     lever: null,
     preset: 0,
     fix: "not linked to UPS-2 wear",
+    line: "UPS-2 failure risk in 6 hours, which this cause doesn’t change",
     note: "Panel B’s imbalance started 3 days before the spike and isn’t linked to UPS-2 wear, so fixing it doesn’t move these odds.",
   },
 };
@@ -703,7 +717,8 @@ export function formatIssueDate(iso: string) {
 }
 
 /* ─────────────────────────────────────────────────────────
- * Log (03 · Log, 08.1). The alert's timeline, newest first.
+ * Log (03 · Log, 08.1). The alert's timeline, newest first unless
+ * the Sort pill turns it round.
  * It opens with the alert itself; everything after that is
  * written by what happens in this session (the analysis, your
  * confirm, tasks, escalation, bookings, the handoff), so the
@@ -718,11 +733,15 @@ export type LogKey = "analysis" | "confirm" | "rule-out" | "task" | "escalate" |
 export type LogItem = { key: LogKey; time: string; cause?: Cause["id"] };
 
 export const LOG = {
-  intro: "Every action on this alert, by people and the Assistant.",
   day: "Today",
-  order: "newest first",
   placeholder: "Ask about what happened on this alert…",
 };
+
+export type LogOrder = "newest" | "oldest";
+export const LOG_SORTS: { key: LogOrder; label: string }[] = [
+  { key: "newest", label: "Newest first" },
+  { key: "oldest", label: "Oldest first" },
+];
 
 export const LOG_CLOCK = { start: 13 * 60 + 30, step: 2 };
 

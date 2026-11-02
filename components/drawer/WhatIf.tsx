@@ -46,20 +46,27 @@ const RISK_TONE: Record<Confidence, "danger" | "warning" | "teal"> = { High: "da
 
 const LEVER_LABEL = { rack: "Move rack 14 load to PDU-02", ups: "Shift UPS-2 load to UPS-1" } as const;
 
-/* "76% → 12% if rack 14’s load moves to PDU-02": the odds now, after
- * fixing the cause, and the fix. lg is the tile; md is the follow-up. */
-export function OddsLine({ id, size = "md" }: { id: Cause["id"]; size?: "md" | "lg" }) {
-  const { lever, preset, fix } = CAUSE_ODDS[id];
+/* "76% → 12%": the odds now and after fixing the cause. lg is the
+ * tile card's title; md sits in the follow-up's odds line. */
+export function OddsFigures({ id, size = "md" }: { id: Cause["id"]; size?: "md" | "lg" }) {
+  const { lever, preset } = CAUSE_ODDS[id];
   const after = oddsAt(lever, preset);
   const lg = size === "lg";
   return (
-    <span className={`flex min-w-0 items-baseline ${lg ? "gap-2.5" : "gap-2"}`}>
-      <span className={`flex shrink-0 items-center gap-1.5 font-semibold tabular ${lg ? "text-[20px] leading-7" : "text-[16px] leading-6"}`}>
-        <span className="text-destructive">{ODDS_NOW}%</span>
-        <Icon src={`${W}/arrow-right.svg`} size={lg ? 16 : 14} />
-        <span className={RISK_TEXT_SMALL[riskFor(after)]}>{after}%</span>
-      </span>
-      <span className={`truncate text-muted-foreground ${lg ? "text-[14px] leading-5" : "text-[13px] leading-5"}`}>{fix}</span>
+    <span className={`flex shrink-0 items-center gap-1.5 font-semibold tabular ${lg ? "text-[20px] leading-none" : "text-[16px] leading-6"}`}>
+      <span className="text-destructive">{ODDS_NOW}%</span>
+      <Icon src={`${W}/arrow-right.svg`} size={lg ? 16 : 14} />
+      <span className={RISK_TEXT_SMALL[riskFor(after)]}>{after}%</span>
+    </span>
+  );
+}
+
+/* "76% → 12% if rack 14’s load moves to PDU-02": the odds and the fix. */
+export function OddsLine({ id }: { id: Cause["id"] }) {
+  return (
+    <span className="flex min-w-0 items-baseline gap-2">
+      <OddsFigures id={id} />
+      <span className="truncate text-[13px] leading-5 text-muted-foreground">{CAUSE_ODDS[id].fix}</span>
     </span>
   );
 }
@@ -242,7 +249,6 @@ function RippleChart({ angle }: { angle: number }) {
   ];
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-[12px] font-medium leading-4 text-muted-foreground">UPS-2 ripple</span>
       <div className="relative h-[148px] w-full overflow-hidden" role="img" aria-label="UPS-2 ripple: today, projection and the Mar 14 failure path">
         {ticks.map((t) => (
           <span key={t.t} className={`absolute left-[26px] w-[26px] -translate-x-full text-right font-mono text-[12px] leading-4 ${t.tone}`} style={{ top: t.top }}>

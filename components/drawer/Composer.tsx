@@ -1,15 +1,54 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { BorderBeam } from "border-beam";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { HANDOFF, LOG, QUESTION, RELATED } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Icon, SearchLoader } from "../ui";
 
+/* Border Beam (libraries.dev/beam) circles the field while it
+ * searches. Its presets aren't Verdigris colours, so its css hook
+ * repaints the stroke, inner glow and bloom with the colour
+ * foundation's teal → purple chart stops (design.verdigris.co/
+ * foundations/color). Teal leads, as the DS asks of accents. */
+const BEAM_STOPS = [
+  "oklch(0.753 0.128 191.6)", // verdigris
+  "oklch(0.64 0.13 216)", // teal mix-1
+  "oklch(0.52 0.14 240.5)", // teal mix-2
+  "oklch(0.41 0.15 264.9)", // teal mix-3
+  "oklch(0.39 0.16 313)", // midnight purple step-1
+];
+const beamGradient = (alpha = 1) =>
+  `linear-gradient(90deg, ${BEAM_STOPS.map((c) => (alpha < 1 ? c.replace(")", ` / ${alpha})`) : c)).join(", ")})`;
+const BEAM_CSS = `
+[data-beam="{id}"][data-active]::after,
+[data-beam="{id}"][data-fading]::after {
+  background: ${beamGradient()};
+  opacity: calc(var(--beam-opacity-{id}) * 0.9 * var(--beam-strength, 1));
+}
+[data-beam="{id}"][data-active]::before,
+[data-beam="{id}"][data-fading]::before {
+  background: ${beamGradient(0.35)};
+  box-shadow: none;
+}
+[data-beam="{id}"] [data-beam-bloom] {
+  background: conic-gradient(
+    from var(--beam-angle-{id}),
+    transparent 0%, transparent 60%,
+    oklch(0.753 0.128 191.6 / 0.5) 68%,
+    oklch(0.52 0.14 240.5 / 0.6) 72%,
+    transparent 80%, transparent 100%
+  );
+  filter: blur(6px);
+}
+`;
+
 /* Chat composer (1363:9234): Disabled → Default → Typing → Searching.
  * Clicking auto-types the scripted question; Enter or Send asks it. */
 export function Composer() {
   const { state, actions } = usePrototype();
+  const reduce = useReducedMotion();
   const { analysis } = state;
   // The scripted question belongs to Root cause; on other tabs the composer rests.
   const chat = state.tab === "rca" ? state.chat : "idle";
@@ -30,50 +69,63 @@ export function Composer() {
           : "Ask about this alert or its causes…";
 
   return (
-    <div
-      role="textbox"
-      aria-readonly
-      aria-disabled={disabled || undefined}
-      aria-label="Ask Signals Assistant"
-      tabIndex={disabled ? -1 : 0}
-      onClick={() => !disabled && actions.focusComposer()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          if (canSend) actions.send();
-          else actions.focusComposer();
-        }
-      }}
-      className={`flex h-11 w-full items-center gap-2 rounded-md border pl-3.5 pr-1.5 transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-standard)] focus-visible:outline-none ${
-        disabled
-          ? "cursor-not-allowed border-border bg-surface-subtle"
-          : typing
-            ? "cursor-text border-verdigris-on-light bg-background shadow-[0_0_0_2px_var(--ring-focus),var(--shadow-xs)]"
-            : "cursor-text border-border bg-background shadow-xs hover:border-[#d4d4d8] focus-visible:border-verdigris-on-light"
-      }`}
+    /* overflow stays visible so the typing focus ring isn't clipped;
+     * the beam's own layers clip to the field's radius. */
+    <BorderBeam
+      size="md"
+      theme="light"
+      staticColors
+      duration={2.4}
+      active={searching && !reduce}
+      css={BEAM_CSS}
+      className="w-full"
+      style={{ overflow: "visible" }}
     >
-      {/* Placeholder, typed question and search status share one cell and crossfade. */}
-      <span className="grid h-6 min-w-0 flex-1 items-center overflow-hidden text-[14px] leading-5">
-        <AnimatePresence initial={false}>
-          {typing ? (
-            <motion.span key="typing" {...swap} className="truncate text-foreground [grid-area:1/1]">
-              {QUESTION.slice(0, state.typed)}
-              <span className="caret ml-px inline-block h-4 w-px translate-y-[3px] bg-foreground" aria-hidden />
-            </motion.span>
-          ) : searching ? (
-            <motion.span key="searching" {...swap} className="flex items-center gap-2 text-muted-foreground [grid-area:1/1]">
-              <SearchLoader size={24} />
-              Searching…
-            </motion.span>
-          ) : (
-            <motion.span key="placeholder" {...swap} className={`truncate [grid-area:1/1] ${disabled ? "text-subtle-foreground" : "text-muted-foreground"}`}>
-              {placeholder}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </span>
-      <SendButton mode={searching ? "stop" : canSend ? "send" : "idle"} onSend={actions.send} onStop={actions.stop} />
-    </div>
+      <div
+        role="textbox"
+        aria-readonly
+        aria-disabled={disabled || undefined}
+        aria-label="Ask Signals Assistant"
+        tabIndex={disabled ? -1 : 0}
+        onClick={() => !disabled && actions.focusComposer()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (canSend) actions.send();
+            else actions.focusComposer();
+          }
+        }}
+        className={`flex h-11 w-full items-center gap-2 rounded-md border pl-3.5 pr-1.5 transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-standard)] focus-visible:outline-none ${
+          disabled
+            ? "cursor-not-allowed border-border bg-surface-subtle"
+            : typing
+              ? "cursor-text border-verdigris-on-light bg-background shadow-[0_0_0_2px_var(--ring-focus),var(--shadow-xs)]"
+              : "cursor-text border-border bg-background shadow-xs hover:border-[#d4d4d8] focus-visible:border-verdigris-on-light"
+        }`}
+      >
+        {/* Placeholder, typed question and search status share one cell and crossfade. */}
+        <span className="grid h-6 min-w-0 flex-1 items-center overflow-hidden text-[14px] leading-5">
+          <AnimatePresence initial={false}>
+            {typing ? (
+              <motion.span key="typing" {...swap} className="truncate text-foreground [grid-area:1/1]">
+                {QUESTION.slice(0, state.typed)}
+                <span className="caret ml-px inline-block h-4 w-px translate-y-[3px] bg-foreground" aria-hidden />
+              </motion.span>
+            ) : searching ? (
+              <motion.span key="searching" {...swap} className="flex items-center gap-2 text-muted-foreground [grid-area:1/1]">
+                <SearchLoader size={24} />
+                Searching…
+              </motion.span>
+            ) : (
+              <motion.span key="placeholder" {...swap} className={`truncate [grid-area:1/1] ${disabled ? "text-subtle-foreground" : "text-muted-foreground"}`}>
+                {placeholder}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
+        <SendButton mode={searching ? "stop" : canSend ? "send" : "idle"} onSend={actions.send} onStop={actions.stop} />
+      </div>
+    </BorderBeam>
   );
 }
 
@@ -152,14 +204,18 @@ export function ComposerFooter() {
   );
 }
 
+/* DS Button, outline, size xs (design.verdigris.co/categories/web-
+ * components/buttons): h-6, text-xs medium, px-1.5 with an icon, the
+ * icon at size-3, 1px border on white with shadow-xs. Radius is the
+ * product-ui control shape, radius.md (8px). */
 function AttachPill({ icon, label }: { icon: string; label: string }) {
   return (
     <button
       type="button"
-      className="flex h-6 items-center gap-1 rounded-[6px] border border-border bg-background pl-1.5 pr-2 shadow-xs transition-colors duration-150 hover:bg-secondary"
+      className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-button border border-border bg-background px-1.5 text-[12px] font-medium leading-4 text-foreground shadow-xs transition-colors duration-150 hover:bg-secondary"
     >
-      <Icon src={icon} size={14} />
-      <span className="text-[12px] font-medium leading-4 text-foreground-secondary">{label}</span>
+      <Icon src={icon} size={12} />
+      {label}
     </button>
   );
 }

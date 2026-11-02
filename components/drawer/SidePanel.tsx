@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CAUSE_ODDS, causeById, type Cause } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { isRoot, usePrototype, type Side } from "@/lib/store";
-import { Collapse, Icon } from "../ui";
+import { Collapse, PanelIcon } from "../ui";
 import { RecommendedSteps, causeActions } from "./Steps";
 import { ThinkingPanel } from "./ThinkingPanel";
 import { CauseSimulator } from "./WhatIf";
@@ -60,12 +60,15 @@ export function SidePanel({ shown }: { shown: boolean }) {
 
   return (
     <section
+      id="assistant-side-panel"
       aria-label={thinking ? "How the Assistant reached these causes" : cause ? `${cause.headline}: simulation and recommended actions` : "Side panel"}
       aria-hidden={!shown}
       inert={!shown}
       className="flex h-full shrink-0 flex-col bg-background"
       style={{ width: SIDE_W }}
     >
+      {/* Header: the panel's one close button. The thinking link sits
+          on the drawer header's line above it (Drawer.tsx). */}
       <div className="flex h-12 shrink-0 items-center justify-end border-b border-border px-3">
         <motion.button
           type="button"
@@ -73,9 +76,9 @@ export function SidePanel({ shown }: { shown: boolean }) {
           whileTap={{ scale: 0.94 }}
           aria-label="Close side panel"
           title="Close (Esc)"
-          className="flex size-8 shrink-0 items-center justify-center rounded-button transition-colors duration-150 hover:bg-secondary"
+          className="flex size-9 shrink-0 items-center justify-center rounded-button text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground"
         >
-          <Icon src="/figma/drawer/panel-close.svg" size={16} />
+          <PanelIcon open />
         </motion.button>
       </div>
 

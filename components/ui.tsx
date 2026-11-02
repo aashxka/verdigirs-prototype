@@ -11,6 +11,21 @@ export function Icon({ src, size = 16, className = "" }: { src: string; size?: n
   return <img src={src} alt="" width={size} height={size} className={`block shrink-0 ${className}`} style={{ width: size, height: size }} draggable={false} />;
 }
 
+/* Lucide panel-right-open / panel-right-close, for the side panel's
+ * toggles: 20px, a step up from the 16px default so it reads at a
+ * glance, with the stroke held at the 1.33px of the drawer's other
+ * icons. currentColor, so the button sets muted / hover colours. */
+export function PanelIcon({ open }: { open: boolean }) {
+  const size = 20;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={(1.33 * 24) / size} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 3v18" />
+      <path d={open ? "m8 9 3 3-3 3" : "m10 15-3-3 3-3"} />
+    </svg>
+  );
+}
+
 const SOURCE_ICON: Record<Source["type"], string> = {
   sensor: "/figma/drawer/activity.svg",
   change: "/figma/drawer/git-commit.svg",

@@ -104,7 +104,7 @@ export function FilterSelect({ label }: { label: string }) {
   return (
     <span className="flex h-[34px] items-stretch overflow-hidden rounded-md border border-border bg-background p-px">
       <span className="flex items-center border-r border-border bg-secondary pl-2 pr-[9px] text-[14px] font-medium leading-[23px] tracking-[-0.15px] text-foreground">{label}</span>
-      <span className="flex w-8 items-center justify-center">
+      <span className="flex w-6 items-center justify-center">
         <Img src={`${A}/select-chevron.svg`} w={9.33} h={5.33} />
       </span>
     </span>

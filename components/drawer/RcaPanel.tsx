@@ -9,11 +9,12 @@ import { CauseTiles } from "./Causes";
 
 /* Root cause tab: live investigation trace → three cause tiles. Their
  * simulation and recommended actions open in the side panel. Once a
- * cause is confirmed it heads the list as the likely root cause. */
+ * cause is confirmed it heads the list as the likely root cause.
+ * The tiles carry no heading; a click on one opens Thinking in the
+ * side panel, as does the tab bar's panel toggle. */
 export function RcaPanel() {
-  const { state, actions } = usePrototype();
+  const { state } = usePrototype();
   const tracing = !state.traceFolded;
-  const rooted = state.root !== null;
   return (
     <div className="flex w-full flex-col">
       <Collapse open={tracing} inMs={300} outMs={260}>
@@ -28,40 +29,7 @@ export function RcaPanel() {
         </motion.div>
       </Collapse>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-baseline gap-2">
-          <h3 className="type-section grid flex-1 text-foreground">
-            <AnimatePresence initial={false}>
-              <motion.span
-                key={rooted ? "root" : "likely"}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transition: { duration: DUR.fast } }}
-                transition={{ duration: DUR.normal, ease: EASE.reveal }}
-                className="[grid-area:1/1]"
-              >
-                {rooted ? "Likely root cause" : "Likely causes"}
-              </motion.span>
-            </AnimatePresence>
-          </h3>
-          <AnimatePresence>
-            {state.causesShown > 0 && (
-              <motion.button
-                type="button"
-                onClick={actions.toggleThinking}
-                aria-expanded={state.thinking}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: DUR.moderate, ease: EASE.reveal }}
-                className="type-label text-verdigris-on-light underline-offset-4 hover:underline"
-              >
-                {state.thinking ? "Hide thinking" : "Show thinking"}
-              </motion.button>
-            )}
-          </AnimatePresence>
-        </div>
-        <CauseTiles />
-      </div>
+      <CauseTiles />
     </div>
   );
 }

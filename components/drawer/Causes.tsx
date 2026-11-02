@@ -2,17 +2,19 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useLayoutEffect, useRef } from "react";
-import { CAUSES, POWER_ON, causeById, type Cause, type CauseChart } from "@/lib/data";
+import { CAUSES, CAUSE_ODDS, POWER_ON, causeById, type Cause, type CauseChart } from "@/lib/data";
 import { DUR, EASE, TWEEN } from "@/lib/motion";
 import { isRoot, usePrototype } from "@/lib/store";
 import { Badge, Button, Collapse, ConfidenceLabel, Icon } from "../ui";
-import { OddsLine } from "./WhatIf";
+import { OddsFigures } from "./WhatIf";
 
 const C = "/figma/cause";
 
 /* Likely causes as three tiles (11.0). Each resolves out of a
  * skeleton in rank order, then answers one question: is this the
- * cause? Simulate and Recommend actions open the drawer's side panel
+ * cause? Each leads with its UPS-2 odds card, then its evidence chart.
+ * A click on the tile itself opens Thinking in the side panel;
+ * Simulate and Recommend actions open the drawer's side panel
  * for that tile, and the tile wears a ring while the panel is its.
  *
  * Yes on a tile makes it the likely root cause: it rises to the top
@@ -104,22 +106,30 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
   const { state, actions } = usePrototype();
   const ruledOut = state.ruledOut.includes(cause.id);
   const root = isRoot(state, cause.id);
-  const active = state.side?.cause === cause.id && state.tab === "rca";
+  const active = state.side?.cause === cause.id && !state.thinking && state.tab === "rca";
   const boxes = active ? (state.side?.boxes ?? []) : [];
+
+  // A click anywhere on the tile but its own controls opens Thinking in
+  // the side panel. Keyboard users reach it from the tab bar's toggle.
+  const onTileClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button, a, input, [role=button]")) return;
+    actions.showThinking();
+  };
 
   return (
     <article
       id={`cause-${cause.id}`}
       aria-label={cause.headline}
-      className={`overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
+      onClick={onTileClick}
+      className={`cursor-pointer overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
         active
           ? "border-accent-border bg-background shadow-[0_0_0_3px_var(--color-accent-subtle),var(--shadow-xs)]"
           : ruledOut
-            ? "border-border bg-surface-subtle"
-            : "border-border bg-background shadow-xs"
+            ? "border-border bg-surface-subtle hover:border-[#d4d4d8]"
+            : "border-border bg-background shadow-xs hover:border-[#d4d4d8]"
       }`}
     >
-      <header className={`flex items-start gap-3 px-5 transition-[padding] duration-300 ease-[var(--ease-reveal)] ${ruledOut ? "py-3.5" : "pb-1.5 pt-5"}`}>
+      <header className={`flex items-start gap-3 px-6 transition-[padding] duration-300 ease-[var(--ease-reveal)] ${ruledOut ? "py-4" : "pb-2 pt-6"}`}>
         <AnimatePresence initial={false}>
           {rank !== undefined && (
             <motion.span
@@ -176,18 +186,38 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
       </header>
 
       <Collapse open={!ruledOut} inMs={300} outMs={240}>
-        {/* One 20px rhythm between summary, evidence, odds and verdict;
-            tighter inside each group (title → summary 6, label → odds 4). */}
-        <div className="flex flex-col gap-5 px-5 pb-5">
+        {/* Spacing on the product-ui scale, tight inside a group and
+            generous between them: headline → summary 8 (compact), 24
+            (panel) to the evidence card and from it down to the verdict's
+            divider, 16 below that. Padding is 24 to match the card's, so
+            the nested card never out-pads its tile. */}
+        <div className="flex flex-col px-6 pb-6">
           <p className="type-body text-pretty text-foreground-tertiary">{cause.summary}</p>
-          <TileChart chart={cause.chart} onOpen={cause.id === 1 ? actions.openSignals : undefined} />
 
-          <div className="flex flex-col rounded-lg bg-secondary/70 p-4">
-            <div className="flex flex-col gap-1">
-              <span className="type-label text-muted-foreground">UPS-2 failure risk in the next 6 hours</span>
-              <OddsLine id={cause.id} size="lg" />
+          {/* DS Card (design.verdigris.co/categories/web-components/cards):
+              the odds are the title, the risk and its fix one description
+              line, the cause's chart the content, and the side-panel
+              buttons the footer. The chart is the evidence for both the
+              odds above it and the Simulate below it, so it lives between
+              them; sections sit 32 apart (section token) so each reads on
+              its own inside the card. */}
+          <section
+            data-slot="card"
+            aria-label="UPS-2 failure risk"
+            className="mt-6 flex flex-col gap-8 rounded-xl border border-border bg-card py-6 text-foreground"
+          >
+            <div data-slot="card-header" className="grid gap-2 px-6">
+              <div data-slot="card-title" className="font-semibold leading-none">
+                <OddsFigures id={cause.id} size="lg" />
+              </div>
+              <p data-slot="card-description" className="truncate text-sm text-muted-foreground" title={CAUSE_ODDS[cause.id].line}>
+                {CAUSE_ODDS[cause.id].line}
+              </p>
             </div>
-            <div className="mt-4 flex gap-2">
+            <div data-slot="card-content" className="px-6">
+              <TileChart chart={cause.chart} />
+            </div>
+            <div data-slot="card-footer" className="flex items-center gap-2 px-6">
               <Button pressed={boxes.includes("simulate")} onClick={() => actions.openSide(cause.id, "simulate")}>
                 Simulate
               </Button>
@@ -195,7 +225,7 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
                 Recommend actions
               </Button>
             </div>
-          </div>
+          </section>
 
           <Verdict id={cause.id} />
         </div>
@@ -240,7 +270,7 @@ function Verdict({ id }: { id: Cause["id"] }) {
   const busy = state.confirming !== null;
   const root = isRoot(state, id);
   return (
-    <div className="relative flex h-[49px] items-end border-t border-border">
+    <div className="relative mt-6 flex border-t border-border pt-4">
       <AnimatePresence mode="popLayout" initial={false}>
         {root ? (
           <motion.span key="done" {...swap} className="flex h-8 flex-1 items-center gap-2 text-[14px] font-medium leading-5 text-foreground">
@@ -266,11 +296,11 @@ function Verdict({ id }: { id: Cause["id"] }) {
 /* The tile's signal: one line over 11:30–13:30, its limit dashed
  * in red, and the 12:22 power-on marked. The line draws left to
  * right once, as the tile arrives, so the jump reads as an event. */
-const CW = 510; // tile content width
+const CW = 452; // card content width (tile 502 − card border and padding)
 const PH = 88; // plot height
-const TOP = 22; // caption row above the plot
+const TOP = 22; // row above the plot for the power-on label
 
-function TileChart({ chart, onOpen }: { chart: CauseChart; onOpen?: () => void }) {
+function TileChart({ chart }: { chart: CauseChart }) {
   const gid = useId();
   const [d0, d1] = chart.domain;
   const x = (m: number) => (m / 120) * CW;
@@ -283,28 +313,9 @@ function TileChart({ chart, onOpen }: { chart: CauseChart; onOpen?: () => void }
   const labelBelow = yEnd < yLim && yLim - yEnd < 28;
   const mx = x(POWER_ON.at);
 
-  const caption = (
-    <span className="type-label flex items-center gap-1 text-muted-foreground">
-      {chart.label}
-      {onOpen && <Icon src="/figma/whatif/arrow-right.svg" size={12} className="-rotate-45 opacity-70 transition-opacity group-hover:opacity-100" />}
-    </span>
-  );
-
+  // No visible caption: the signal's name stays in the figure's label.
   return (
     <figure className="relative h-[134px] w-full" aria-label={`${chart.label}, 11:30 to 13:30, ${chart.limit.label.toLowerCase()} dashed`}>
-      {onOpen ? (
-        <button
-          type="button"
-          onClick={onOpen}
-          title="Open in Signals"
-          className="group absolute left-0 top-0 rounded-[4px] transition-colors hover:[&>span]:text-foreground-secondary"
-        >
-          {caption}
-        </button>
-      ) : (
-        <span className="absolute left-0 top-0">{caption}</span>
-      )}
-
       <svg className="absolute left-0 overflow-visible" style={{ top: TOP }} width={CW} height={PH} viewBox={`0 0 ${CW} ${PH}`} aria-hidden>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
@@ -352,24 +363,23 @@ function TileChart({ chart, onOpen }: { chart: CauseChart; onOpen?: () => void }
   );
 }
 
-/* Same anatomy and height as a tile, so nothing jumps when it resolves. */
+/* Same anatomy and spacing as a tile, so nothing jumps when it resolves. */
 function TileSkeleton() {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-background shadow-xs" aria-hidden>
-      <div className="flex items-center gap-3 px-5 pb-1.5 pt-5">
+      <div className="flex items-center gap-3 px-6 pb-2 pt-6">
         <span className="flex h-6 flex-1 items-center">
           <span className="shimmer h-3.5 w-[58%] rounded-[4px]" />
         </span>
         <span className="shimmer h-3 w-16 rounded-[4px]" />
       </div>
-      <div className="flex flex-col gap-5 px-5 pb-5">
-        <span className="flex h-10 flex-col justify-center gap-2.5">
+      <div className="flex flex-col px-6 pb-6">
+        <span className="flex h-11 flex-col justify-center gap-3">
           <span className="shimmer h-2.5 w-[86%] rounded-[4px]" />
           <span className="shimmer h-2.5 w-[52%] rounded-[4px]" />
         </span>
-        <span className="shimmer h-[134px] rounded-md" />
-        <span className="shimmer h-[128px] rounded-lg" />
-        <span className="flex h-[49px] items-end border-t border-border">
+        <span className="shimmer mt-6 h-[328px] rounded-xl" />
+        <span className="mt-6 flex border-t border-border pt-4">
           <span className="flex h-8 flex-1 items-center">
             <span className="shimmer h-3 w-28 rounded-[4px]" />
           </span>

@@ -66,8 +66,8 @@ export type State = {
   confirming: Cause["id"] | null;
   ruledOut: Cause["id"][];
   side: Side | null;
-  /* Show thinking: the side panel holds the investigation timeline
-   * instead of a cause's boxes (the two never share it). */
+  /* Thinking: the side panel shows the investigation timeline over a
+   * cause's boxes (side keeps them, so Hide thinking returns to them). */
   thinking: boolean;
   steps: Record<string, StepStatus>;
   dialog: { stepKey: string; submitting: boolean } | null;
@@ -284,6 +284,11 @@ function useController() {
         const same = s.side?.cause === id;
         const current = same ? s.side!.boxes : [];
         if (current.includes(view)) {
+          // Under Thinking, the box is already there: bring it back.
+          if (s.thinking) {
+            patch({ thinking: false });
+            return;
+          }
           if (mode === "show") return;
           const boxes = current.filter((b) => b !== view);
           if (!boxes.length) {
@@ -298,7 +303,7 @@ function useController() {
         patch({ side: { cause: id, boxes: BOX_ORDER.filter((b) => b === view || current.includes(b)) }, thinking: false });
         const { lever, preset } = CAUSE_ODDS[id];
         if (view === "simulate" && lever && s.simStop[id] === 0) {
-          after("sim", s.side ? TIMING.simPrime : TIMING.simPrimeOpening, () =>
+          after("sim", s.side || s.thinking ? TIMING.simPrime : TIMING.simPrimeOpening, () =>
             patch({ simStop: { ...ref.current.simStop, [id]: preset } }),
           );
         }
@@ -307,10 +312,17 @@ function useController() {
         clear("sim");
         patch({ side: null, thinking: false });
       },
-      /* Show thinking takes the side panel; the link toggles it. */
-      toggleThinking() {
-        clear("sim");
-        patch({ thinking: !ref.current.thinking, side: null });
+      /* Thinking is the side panel's default: a click on any cause
+       * tile, or the tab bar's panel button, shows it. A cause's boxes
+       * stay underneath, so Hide thinking goes back to them. */
+      showThinking() {
+        patch({ thinking: true });
+      },
+      /* The side panel's Hide thinking: back to the cause's boxes if
+       * there are any, otherwise the panel closes. */
+      hideThinking() {
+        if (ref.current.side) patch({ thinking: false });
+        else actions.closeSide();
       },
       /* A source in Show thinking that is a past issue: open it in Related issues. */
       openRelatedIssue(id: string) {
