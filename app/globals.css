@@ -43,7 +43,8 @@
   --color-accent-border: #abecea;
   /* DS Table row hover (bg-table-row-hover) */
   --color-table-row-hover: #fafafa;
-  --color-neutral-50: oklch(0.985 0 0); /* DS neutral.50, near-white */  --color-neutral-500: #71717b;
+  --color-neutral-50: oklch(0.985 0 0); /* DS neutral.50, near-white */
+  --color-neutral-500: #71717b;
 
   /* radius */
   --radius-sm: 6px;
