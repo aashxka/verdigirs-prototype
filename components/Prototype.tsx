@@ -111,7 +111,7 @@ function Screen() {
         className="pointer-events-none absolute inset-0 z-10 bg-[#09090b]"
         initial={false}
         animate={{ opacity: dimmed ? 0.08 : 0 }}
-        transition={{ duration: dimmed ? DUR.drawer : DUR.drawerOut, ease: EASE.reveal }}
+        transition={{ duration: dimmed ? DUR.dim : DUR.dimOut, ease: EASE.reveal }}
         aria-hidden
       />
       <AssistantDrawer />

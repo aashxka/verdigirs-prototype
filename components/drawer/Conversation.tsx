@@ -160,7 +160,7 @@ function StreamText({ text, className, delay = 0, as: Tag = "p" }: { text: strin
           aria-hidden
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: delay + i * 0.028 }}
+          transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: delay + i * 0.036 }}
         >
           {w}
           {i < words.length - 1 ? " " : ""}
@@ -197,7 +197,7 @@ function SearchStatus() {
                   key={s.label}
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.25 + i * 0.08 }}
+                  transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.3 + i * 0.12 }}
                   className="flex items-center gap-2.5 py-1.5"
                 >
                   <span className="flex size-4 shrink-0 items-center justify-center">

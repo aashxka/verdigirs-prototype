@@ -17,11 +17,11 @@ export function RcaPanel() {
   const tracing = !state.traceFolded;
   return (
     <div className="flex w-full flex-col">
-      <Collapse open={tracing} inMs={300} outMs={260}>
+      <Collapse open={tracing} inMs={300} outMs={340}>
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={tracing ? { opacity: 1, y: 0 } : { opacity: 0, y: -4 }}
-          transition={{ duration: tracing ? DUR.reveal : 0.2, ease: EASE.reveal, delay: tracing ? 0.15 : 0 }}
+          transition={{ duration: tracing ? DUR.reveal : DUR.moderate, ease: EASE.reveal, delay: tracing ? 0.15 : 0 }}
           className="flex flex-col gap-4 pb-6"
         >
           <p className="text-[14px] leading-5 text-muted-foreground">{TRACE_META}</p>

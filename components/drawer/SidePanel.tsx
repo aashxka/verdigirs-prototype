@@ -87,10 +87,7 @@ export function SidePanel({ shown }: { shown: boolean }) {
           {thinking && (
             <motion.div
               key={key}
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, transition: { duration: DUR.fast, ease: EASE.standard } }}
-              transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.06 }}
+              {...settle}
               className="w-full pt-6"
             >
               <ThinkingPanel />
@@ -99,10 +96,7 @@ export function SidePanel({ shown }: { shown: boolean }) {
           {held && (
             <motion.div
               key={key}
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, transition: { duration: DUR.fast, ease: EASE.standard } }}
-              transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.06 }}
+              {...settle}
               className="w-full pt-6"
             >
               {/* Each box sits in px-6 pb-6 inside its collapse, so the collapse's clip never cuts its shadow. */}
@@ -141,6 +135,15 @@ export function SidePanel({ shown }: { shown: boolean }) {
     </section>
   );
 }
+
+/* Contents settle in a beat behind the sheet's edge, from the side it
+ * came in on, so the panel reads as arriving and then filling. */
+const settle = {
+  initial: { opacity: 0, x: 16 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, transition: { duration: DUR.fast, ease: EASE.standard } },
+  transition: { duration: DUR.slow, ease: EASE.reveal, delay: 0.15 },
+};
 
 const contentKey = (c: Side | "thinking" | null) => (c === null ? "" : c === "thinking" ? c : `${c.cause}:${c.boxes.join()}`);
 

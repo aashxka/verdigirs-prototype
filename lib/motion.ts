@@ -8,27 +8,30 @@
  *
  * INVESTIGATE → RESULTS (ms after click)
  *     0   ring turns into a clockwise conic sweep, label → "Investigating…"
- *   800   drawer slides in from the right (300ms), page dims to 8%
- *   950   trace card fades up; steps tick off one by one
- *  3150   trace folds away (250ms)
- *  3350   three cause tiles resolve out of their skeletons (staggered
- *         260ms); each tile's signal line draws left to right (500ms)
- *  4250   analysis done: the composer wakes up
+ *   900   drawer slides in from the right on the sheet spring (lands
+ *         ~500ms), page dims to 8%
+ *  1150   trace card fades up as the drawer lands; steps tick off
+ *         one by one, ~0.5–0.8s each
+ *  4350   "Investigation complete" holds, then the trace folds (340ms)
+ *  4550   three cause tiles resolve out of their skeletons (staggered
+ *         380ms); each tile's signal line draws left to right (700ms)
+ *  6100   analysis done: the composer wakes up
  *
- * SIMULATE / RECOMMEND ACTIONS (any tile)
- *     0   the drawer slides 600px left to make room (300ms, transform
- *         only). The tiles ride its leading edge left; the side
- *         panel arrives from the right edge, the way it will leave.
- *         The tile it belongs to takes a verdigris ring.
- *    60   side panel contents settle in (fade, 12px)
+ * SIMULATE / RECOMMEND ACTIONS / THINKING (any tile)
+ *     0   the drawer slides 600px left to make room (sheet spring,
+ *         ~500ms, transform only). The tiles ride its leading edge
+ *         left; the side panel arrives from the right edge, the way
+ *         it will leave. The tile it belongs to takes a verdigris ring.
+ *   150   side panel contents settle in behind the edge (fade, 16px, 500ms)
  *     0   Recommend actions under the simulation: its box opens below
  *         (300ms) and the panel scrolls to it
- *   560   (Simulate) the lever glides to its recommended stop; After
+ *   760   (Simulate) the lever glides to its recommended stop; After
  *         rolls down and the projection swings toward the 15% line
  *     0   another tile: contents crossfade in place; the same tile's
  *         other button adds or removes that box (300ms)
  *     0   close (⇥, Esc, or the pressed button again): the drawer
- *         narrows and the panel rides out to the right
+ *         narrows and the panel rides out to the right. Both ways are
+ *         one spring, so a reversal mid-flight carries its velocity.
  *
  * YES (confirm a tile)
  *     0   Yes shows a spinner, No dims
@@ -45,14 +48,14 @@
  *         zoom from 95%, 8px up) and follows the pointer along it
  *  Ask    tooltip leaves (150ms); the line stays tinted and lands in
  *         the composer as a quote chip, Send turns green
- *  +700   it sends itself (Send or Enter sends it sooner)
+ *  +900   it sends itself (Send or Enter sends it sooner)
  *
  * FOLLOW-UP QUESTION (ms after it sends)
  *     0   quote bubble lands; composer reads "Searching…" beside
  *         the matrix loader, Send turns into Stop
- *   300   search steps tick off (matrix loader while active)
- *  3200   steps fold into one summary line
- *  3400   answer streams in block by block (staggered 180ms)
+ *   800   search steps tick off (matrix loader while active)
+ *  3950   steps fold into one summary line
+ *  4250   answer streams in block by block (staggered 280ms)
  *
  * RELATED ISSUES
  *     0   Date / Sort / Filter menus grow from their trigger edge (200ms)
@@ -76,8 +79,10 @@
 /* Verdigris motion tokens (design.verdigris.co/foundations/motion and
  * tokens/motion/*.json). The product-ui profile runs interactions at
  * duration.normal with easing.default, and entrances at duration.slow
- * with an ease-out. Only transform and opacity animate (no blur), and
- * nothing outside the drag lever runs longer than duration.slow. */
+ * with an ease-out. Only transform and opacity animate (no blur).
+ * Press and hover stay fast; only system-paced things (loading, sheets,
+ * AI output arriving) take duration.slow, and a chart line draws a
+ * little longer so the jump reads as an event. */
 export const EASE = {
   // easing.reveal-cubic, the DS's cubic ease-out: entrances, panels, expand
   reveal: [0.33, 1, 0.68, 1] as const,
@@ -93,8 +98,9 @@ export const DUR = {
   press: D.fast,
   exit: D.fast,
   routine: D.normal,
-  drawer: D.moderate, // panel reveal
-  drawerOut: D.normal,
+  dim: D.slow, // the page dims as the sheet arrives
+  dimOut: D.moderate,
+  draw: 0.7, // a tile's signal line drawing in: data arriving, read at a walk
   expand: D.moderate,
   collapse: D.normal,
   dialogIn: D.normal,
@@ -103,40 +109,45 @@ export const DUR = {
 };
 
 export const TIMING = {
-  drawerOpens: 800, // 02.1 → 02.2 after-timeout in Figma
-  traceAppears: 150, // after drawer starts opening
-  traceStep: [380, 760, 1080, 1620, 1940, 2260], // each trace step finishes
-  traceFolds: 2400,
-  causesStart: 2600,
-  causeStagger: 260,
-  analysisDone: 3500,
+  drawerOpens: 900, // the ring sweeps a beat longer before the drawer comes
+  traceAppears: 250, // after the drawer starts opening: as it lands
+  traceStep: [560, 1140, 1640, 2440, 2940, 3440], // each trace step finishes
+  traceFolds: 3950, // "Investigation complete" holds ~500ms first
+  causesStart: 4150,
+  causeStagger: 380,
+  analysisDone: 5200,
   confirmSpinner: 700,
   simPrime: 380, // Simulate in an open side panel → lever glides to its recommended stop
-  simPrimeOpening: 560, // same, while the side panel is still widening
+  simPrimeOpening: 760, // same, while the side panel is still widening
   toastLife: 4000, // Sonner default, per the DS toast page
   actionSpinner: 520,
   askTooltip: 300, // DS TooltipProvider delayDuration
-  askSends: 700, // Ask → the quoted line sends itself
-  searchStep: [600, 2000, 2900], // each search step finishes (after Send)
-  searchFolds: 3150,
-  answerStarts: 3350,
-  answerStagger: 180,
+  askSends: 900, // Ask → the quoted line sends itself
+  searchStep: [800, 2500, 3600], // each search step finishes (after it sends)
+  searchFolds: 3950,
+  answerStarts: 4250,
+  answerStagger: 280,
   writeStart: 600, // first handoff message resolves (after Generate)
   writeStagger: 650,
   writeSettle: 450, // last message done → Send appears
 };
 
-/* Tweens for the drawer and small pops. The DS has no spring tokens,
- * so only the what-if lever, which follows the pointer and settles
- * on a stop, keeps physics. */
+/* Tweens for small pops. */
 export const TWEEN = {
-  // The drawer sliding 600px to make room for the side panel: a panel reveal
-  panel: { duration: D.moderate, ease: EASE.reveal },
   // Chips and badges arriving
   pop: { duration: D.normal, ease: EASE.reveal },
 };
 
 export const SPRING = {
+  /* Sheets: the drawer coming in and widening for the side panel
+   * (apple-design). Critically damped (bounce 0): a click carries no
+   * momentum, so nothing overshoots. A spring starts from wherever the
+   * sheet is and keeps its velocity, so closing or toggling mid-flight
+   * turns it around smoothly instead of restarting. visualDuration
+   * holds the perceived length to the DS's duration.slow; it leaves
+   * a little quicker than it came. */
+  sheet: { type: "spring" as const, bounce: 0, visualDuration: D.slow },
+  sheetOut: { type: "spring" as const, bounce: 0, visualDuration: 0.36 },
   // What-if: Figma smart animate spring (mass 1, stiffness 520, damping 44)
   whatIf: { type: "spring" as const, mass: 1, stiffness: 520, damping: 44 },
   // Knob follows the pointer while dragging

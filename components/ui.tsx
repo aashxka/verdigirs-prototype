@@ -58,23 +58,18 @@ export function SourceChip({ source, onOpen }: { source: Source; onOpen?: () => 
   );
 }
 
-/* Confidence label — 3-bar meter + level. */
-const CONF_TONE: Record<Confidence, { bar: string; off: string; text: string; lit: number }> = {
-  High: { bar: "bg-verdigris-on-light", off: "bg-verdigris-on-light", text: "text-verdigris-on-light", lit: 3 },
-  Medium: { bar: "bg-warning-fg", off: "bg-border", text: "text-warning-fg", lit: 2 },
-  Low: { bar: "bg-neutral-500", off: "bg-border", text: "text-foreground-tertiary", lit: 1 },
-};
-
+/* Confidence: a grey tag, the DS Badge "secondary" variant
+ * (design.verdigris.co/categories/web-components/data-display):
+ * rounded-md px-2 py-0.5 text-xs font-medium, bg-secondary with
+ * secondary-foreground text. No icon. */
 export function ConfidenceLabel({ level, label }: { level: Confidence; label?: string }) {
-  const tone = CONF_TONE[level];
   return (
-    <span className="inline-flex shrink-0 items-center gap-1" aria-label={label ?? `${level} confidence`}>
-      <span className="flex items-end gap-0.5" aria-hidden>
-        {[6, 9, 12].map((h, i) => (
-          <span key={h} className={`w-[3px] rounded-[1px] ${i < tone.lit ? tone.bar : tone.off}`} style={{ height: h }} />
-        ))}
-      </span>
-      <span className={`text-[13px] font-medium leading-4 ${tone.text}`}>{label ?? level}</span>
+    <span
+      data-slot="badge"
+      className="inline-flex shrink-0 items-center whitespace-nowrap rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"
+      aria-label={label ?? `${level} confidence`}
+    >
+      {label ?? level}
     </span>
   );
 }

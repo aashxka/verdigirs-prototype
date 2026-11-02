@@ -333,7 +333,7 @@ function TileChart({ chart }: { chart: CauseChart }) {
           fill={`url(#${gid})`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: DUR.slow, ease: EASE.reveal, delay: 0.3 }}
+          transition={{ duration: DUR.draw, ease: EASE.reveal, delay: 0.45 }}
         />
         <line x1="0" x2={CW} y1={yLim} y2={yLim} stroke="var(--color-pastel-red)" strokeWidth="1" strokeDasharray="3 3" />
         <motion.path
@@ -345,7 +345,7 @@ function TileChart({ chart }: { chart: CauseChart }) {
           strokeLinecap="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={{ duration: DUR.slow, ease: EASE.reveal, delay: 0.12 }}
+          transition={{ duration: DUR.draw, ease: EASE.reveal, delay: 0.2 }}
         />
       </svg>
 

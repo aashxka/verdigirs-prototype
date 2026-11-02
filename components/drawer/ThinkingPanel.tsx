@@ -34,7 +34,8 @@ const TITLE_LINE = 24;
 
 function Step({ step, index, last }: { step: ThinkingStep; index: number; last: boolean }) {
   const [open, setOpen] = useState(false);
-  const delay = 0.06 + index * 0.04;
+  // Steps land after the panel's own settle, one by one.
+  const delay = 0.2 + index * 0.07;
   const bodyId = `thinking-step-${index}`;
   return (
     <motion.li

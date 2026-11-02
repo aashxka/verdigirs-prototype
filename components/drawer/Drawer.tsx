@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { DUR, EASE, TWEEN } from "@/lib/motion";
+import { DUR, EASE, SPRING } from "@/lib/motion";
 import { usePrototype, type Tab } from "@/lib/store";
 import { Icon, PanelIcon } from "../ui";
 import { ComposerFooter } from "./Composer";
@@ -22,6 +22,8 @@ const TABS: { label: string; tab: Tab }[] = [
 
 const DRAWER_W = 600;
 const FULL_W = DRAWER_W + SIDE_W;
+// Closed: the thinking link's right edge, 16px before the close button (header pr-4, size-8).
+const LINK_END = DRAWER_W - 16 - 32 - 16;
 
 /* Assistant drawer: non-modal, 600px, slides over the alert page.
  * Simulate and Recommend actions widen it leftward by SIDE_W: the
@@ -40,8 +42,8 @@ export function AssistantDrawer() {
   // Which change the drawer is animating: opening/closing, or making room for the side panel.
   const [seen, setSeen] = useState({ open, extended, by: "open" as "open" | "side" });
   if (seen.open !== open || seen.extended !== extended) setSeen({ open, extended, by: seen.open !== open ? "open" : "side" });
-  const slide =
-    seen.by === "open" ? { duration: open ? DUR.drawer : DUR.drawerOut, ease: EASE.reveal } : reduce ? { duration: 0 } : TWEEN.panel;
+  // One spring both ways for opening and for widening, so either can be reversed mid-flight.
+  const slide = reduce && seen.by === "side" ? { duration: 0 } : (seen.by === "open" ? open : extended) ? SPRING.sheet : SPRING.sheetOut;
   const tuck = extended ? 0 : SIDE_W;
   const scrollRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -85,29 +87,37 @@ export function AssistantDrawer() {
     >
       <header className="relative flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
         <h2 className="flex-1 text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
-        {/* The side panel's thinking link, on the header's line and over
-            the panel it controls (its content's 24px inset). Show over a
-            cause's boxes, Hide over Thinking (back to the boxes, or the
-            panel closes). top 22px puts its baseline on the title's. */}
-        <AnimatePresence initial={false}>
-          {extended && (
-            <motion.button
-              key="thinking-link"
-              type="button"
-              onClick={state.thinking ? actions.hideThinking : actions.showThinking}
-              aria-pressed={state.thinking}
-              aria-controls="assistant-side-panel"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: DUR.fast } }}
-              transition={{ duration: DUR.normal, ease: EASE.reveal, delay: 0.1 }}
-              className="type-label absolute top-[22px] text-verdigris-on-light underline-offset-4 hover:underline"
-              style={{ left: DRAWER_W + 24 }}
-            >
-              {state.thinking ? "Hide thinking" : "Show thinking"}
-            </motion.button>
-          )}
-        </AnimatePresence>
+        {/* The thinking link, always on the header's line (Root cause
+            only). It belongs to the side panel, so it rides with it:
+            closed, its right edge sits 16px before the close button;
+            open, it travels with the sheet to the panel's 24px content
+            inset. The anchor moves on the drawer's own spring and the
+            link shifts from right- to left-aligned (−100% → 0) on the
+            same spring, so no width is measured. Show opens or switches
+            to Thinking; Hide goes back to the boxes, or closes the panel.
+            top 22px puts its baseline on the title's. */}
+        <motion.div
+          className={`absolute left-0 top-[22px] transition-opacity duration-200 ${state.tab === "rca" ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          aria-hidden={state.tab !== "rca"}
+          initial={false}
+          animate={{ x: extended ? DRAWER_W + 24 : LINK_END }}
+          transition={slide}
+        >
+          <motion.button
+            type="button"
+            onClick={state.thinking ? actions.hideThinking : actions.showThinking}
+            disabled={state.analysis !== "done"}
+            tabIndex={state.tab === "rca" ? undefined : -1}
+            aria-pressed={state.thinking}
+            aria-controls="assistant-side-panel"
+            initial={false}
+            animate={{ x: extended ? "0%" : "-100%" }}
+            transition={slide}
+            className="type-label block whitespace-nowrap text-verdigris-on-light underline-offset-4 hover:underline disabled:pointer-events-none disabled:opacity-40"
+          >
+            {state.thinking ? "Hide thinking" : "Show thinking"}
+          </motion.button>
+        </motion.div>
         <motion.div initial={false} animate={{ x: -tuck }} transition={slide}>
           <motion.button
             type="button"
@@ -203,7 +213,7 @@ export function AssistantDrawer() {
           <div
             data-slot="separator"
             role="none"
-            className={`pointer-events-none absolute bottom-0 right-0 top-12 z-[1] w-px bg-border transition-opacity duration-200 ${extended ? "opacity-100" : "opacity-0"}`}
+            className={`pointer-events-none absolute bottom-0 right-0 top-12 z-[1] w-px bg-border transition-opacity duration-500 ${extended ? "opacity-100" : "opacity-0"}`}
           />
         </div>
         <SidePanel shown={open && extended} />
