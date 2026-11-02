@@ -81,8 +81,8 @@ export function SidePanel({ shown }: { shown: boolean }) {
         </motion.button>
       </div>
 
-      {/* Content on verdigris 100, so the white boxes and Thinking cards sit on a light tint. */}
-      <div ref={scrollRef} className="scroll-quiet relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-verdigris-100">
+      {/* Content on DS zinc 100, so the white boxes and Thinking cards sit on a light grey. */}
+      <div ref={scrollRef} className="scroll-quiet relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-zinc-100">
         <AnimatePresence mode="popLayout" initial={false}>
           {thinking && (
             <motion.div

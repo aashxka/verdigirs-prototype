@@ -44,6 +44,7 @@
   /* DS Table row hover (bg-table-row-hover) */
   --color-table-row-hover: #fafafa;
   --color-neutral-50: oklch(0.985 0 0); /* DS neutral.50, near-white */
+  --color-zinc-100: oklch(0.967 0.001 286); /* DS zinc.100 (foundations/color), side panel ground */
   --color-neutral-500: #71717b;
 
   /* radius */

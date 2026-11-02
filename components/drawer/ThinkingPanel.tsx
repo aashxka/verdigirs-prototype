@@ -51,7 +51,7 @@ function Step({ step, index, last }: { step: ThinkingStep; index: number; last: 
         {!last && (
           <span className="absolute left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-border" style={{ top: TITLE_LINE, bottom: -TITLE_LINE }} />
         )}
-        <span className="absolute left-0 size-2.5 rounded-full bg-verdigris shadow-[0_0_0_3px_var(--color-verdigris-100)]" style={{ top: TITLE_LINE - 5 }} />
+        <span className="absolute left-0 size-2.5 rounded-full bg-verdigris shadow-[0_0_0_3px_var(--color-zinc-100)]" style={{ top: TITLE_LINE - 5 }} />
       </span>
 
       <article className="flex min-w-0 flex-col overflow-clip rounded-lg border border-border bg-background">

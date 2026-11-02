@@ -18,10 +18,11 @@ const C = "/figma/cause";
  * Simulate and Recommend actions open the drawer's side panel
  * for that tile, and the tile wears a ring while the panel is its.
  *
- * Yes on a tile makes it the likely root cause: it rises to the top
- * and the others drop below an "Other likely causes" heading, still
- * in rank order and numbered from 1. Undo, or confirming another
- * cause, reorders them the same way. */
+ * Tiles are numbered in rank order. Yes on a tile makes it the likely
+ * root cause: it rises to the top, its number becomes a check, and the
+ * others drop below an "Other likely causes" heading, still in rank
+ * order and renumbered from 1. Undo, or confirming another cause,
+ * reorders them the same way. */
 export function CauseTiles() {
   const { state } = usePrototype();
   const rootId = state.root;
@@ -47,7 +48,7 @@ export function CauseTiles() {
             ]
           : []),
         <div key={cause.id} data-flip={cause.id} className={`${pos < order.length - 1 ? "pb-4" : ""} ${cause.id === rootId ? "relative z-[1]" : ""}`}>
-          <CauseSlot cause={cause} i={CAUSES.indexOf(cause)} rank={rootId && cause.id !== rootId ? others.indexOf(cause) + 1 : undefined} />
+          <CauseSlot cause={cause} i={CAUSES.indexOf(cause)} rank={rootId ? pos : pos + 1} />
         </div>,
       ])}
     </div>
@@ -81,7 +82,7 @@ function useTileFlip(list: React.RefObject<HTMLDivElement | null>, order: string
   });
 }
 
-function CauseSlot({ cause, i, rank }: { cause: Cause; i: number; rank?: number }) {
+function CauseSlot({ cause, i, rank }: { cause: Cause; i: number; rank: number }) {
   const { state } = usePrototype();
   return (
     <AnimatePresence mode="popLayout" initial={false}>
@@ -103,7 +104,7 @@ function CauseSlot({ cause, i, rank }: { cause: Cause; i: number; rank?: number 
   );
 }
 
-function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
+function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
   const { state, actions } = usePrototype();
   const ruledOut = state.ruledOut.includes(cause.id);
   const root = isRoot(state, cause.id);
@@ -130,29 +131,19 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
       className={`cursor-pointer overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
         active
           ? // DS "Card with Accent Bar" (categories/web-components/cards): a
-            // 3px brand-teal top edge, drawn as the 1px top border plus a 2px
-            // inset so the card never shifts.
-            "border-border border-t-verdigris bg-background shadow-[inset_0_2px_0_0_var(--color-verdigris),var(--shadow-xs)]"
+            // 3px brand-teal edge, run along the top, left and bottom so the
+            // card opens toward its side panel. Each is the 1px border plus a
+            // 2px inset, so the card never shifts.
+            "border-border border-t-verdigris border-l-verdigris border-b-verdigris bg-background shadow-[inset_0_2px_0_0_var(--color-verdigris),inset_2px_0_0_0_var(--color-verdigris),inset_0_-2px_0_0_var(--color-verdigris),var(--shadow-xs)]"
           : ruledOut
             ? "border-border bg-surface-subtle hover:border-[#d4d4d8]"
             : "border-border bg-background shadow-xs hover:border-[#d4d4d8]"
       }`}
     >
       <header className={`flex items-start gap-3 px-6 transition-[padding] duration-300 ease-[var(--ease-reveal)] ${ruledOut ? "py-4" : "pb-2 pt-6"}`}>
-        <AnimatePresence initial={false}>
-          {rank !== undefined && (
-            <motion.span
-              key="rank"
-              initial={{ width: 0, marginRight: -12, opacity: 0 }}
-              animate={{ width: 20, marginRight: 0, opacity: 1 }}
-              exit={{ width: 0, marginRight: -12, opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } }}
-              transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.2 }}
-              className="flex h-7 shrink-0 items-center overflow-hidden"
-            >
-              <TileRank n={rank} />
-            </motion.span>
-          )}
-        </AnimatePresence>
+        <span className="flex h-7 shrink-0 items-center">
+          <TileRank n={rank} root={root} />
+        </span>
         <h3
           className={`type-section min-w-0 flex-1 text-pretty transition-colors duration-200 ${
             ruledOut ? "text-muted-foreground" : "text-foreground"
@@ -246,23 +237,27 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
   );
 }
 
-/* A tile's number in "Other likely causes"; the digit rolls when it changes. */
-function TileRank({ n }: { n: number }) {
+/* A tile's number in the ranking, or a check once it's the root cause
+ * (as CauseRank does); the digit rolls when it changes. */
+function TileRank({ n, root }: { n: number; root: boolean }) {
   return (
     <span
-      className="relative flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-mono text-[12px] leading-4 text-foreground-secondary"
-      aria-label={`Number ${n}`}
+      className={`relative flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full font-mono text-[12px] leading-4 transition-colors duration-200 ${
+        root ? "bg-verdigris-on-light text-white" : "bg-secondary text-foreground-secondary"
+      }`}
+      aria-label={root ? "Root cause" : `Number ${n}`}
     >
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
-          key={n}
+          key={root ? "check" : n}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: DUR.moderate, ease: EASE.reveal }}
+          className="flex"
           aria-hidden
         >
-          {n}
+          {root ? <Icon src="/figma/handoff/check.svg" size={12} /> : n}
         </motion.span>
       </AnimatePresence>
     </span>
@@ -380,6 +375,7 @@ function TileSkeleton() {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-background shadow-xs" aria-hidden>
       <div className="flex items-center gap-3 px-6 pb-2 pt-6">
+        <span className="shimmer size-5 shrink-0 rounded-full" />
         <span className="flex h-7 flex-1 items-center">
           <span className="shimmer h-4 w-[58%] rounded-[4px]" />
         </span>
