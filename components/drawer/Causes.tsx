@@ -238,14 +238,15 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
 
 /* A cause's number in the ranking, or a check once it's the root cause;
  * the digit rolls when it changes. DS Badge (categories/web-components/
- * data-display): secondary for a number, default for the root cause.
- * Both are held 24 wide (the check's padding is 6, not 8) so headlines
- * line up from tile to tile. */
+ * data-display): secondary for a number, default for the root cause,
+ * with the digit at 13px rather than text-xs so it stays above 12 when
+ * the stage scales down. Both are held 24 wide (the check's padding is 6,
+ * not 8) so headlines line up from tile to tile. */
 function RankBadge({ n, root }: { n: number; root: boolean }) {
   return (
     <span
       data-slot="badge"
-      className={`relative inline-flex h-5 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded-md py-0.5 text-xs font-medium tabular-nums transition-colors duration-200 ${
+      className={`relative inline-flex h-5 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded-md py-0.5 text-[13px] font-medium leading-4 tabular-nums transition-colors duration-200 ${
         root ? "bg-primary px-1.5 text-primary-foreground" : "bg-secondary px-2 text-secondary-foreground"
       }`}
       aria-label={root ? "Root cause" : `Number ${n}`}

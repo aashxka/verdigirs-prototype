@@ -195,15 +195,6 @@ export function AssistantDrawer() {
           </div>
 
           <ComposerFooter />
-          {/* DS Separator (design.verdigris.co/categories/web-components/layout):
-              a vertical 1px bg-border line on the column's right edge, shown
-              while the side panel is out. It starts under the 48px tab row,
-              so the tab bar and the panel's header read as one toolbar. */}
-          <div
-            data-slot="separator"
-            role="none"
-            className={`pointer-events-none absolute bottom-0 right-0 top-12 z-[1] w-px bg-border transition-opacity duration-500 ${extended ? "opacity-100" : "opacity-0"}`}
-          />
         </div>
         <SidePanel shown={open && extended} />
       </div>

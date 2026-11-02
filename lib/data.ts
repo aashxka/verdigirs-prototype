@@ -452,7 +452,6 @@ export type Recipient = { key: PersonKey; audience: string; name: string; photo?
 
 export const HANDOFF = {
   intro: "Pick who it’s for and where to send it. Each message is written from the Log for its reader.",
-  disclaimer: "AI-drafted from the Log. Review before you send.",
   placeholder: "Ask about this handoff…",
 };
 

@@ -207,7 +207,6 @@ const swap = {
 };
 
 export function ComposerFooter() {
-  const { state } = usePrototype();
   return (
     /* Full-width dock on DS neutral.50 (the field stays white on it),
      * rounded top, square bottom, no stroke, a soft shadow along the
@@ -217,28 +216,23 @@ export function ComposerFooter() {
       style={{ boxShadow: "0 -1px 2px rgba(0,0,0,0.04), 0 -10px 24px -12px rgba(0,8,20,0.12)" }}
     >
       <Composer />
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <AttachPill icon="/figma/drawer/camera.svg" label="Image" />
-          <AttachPill icon="/figma/drawer/paperclip.svg" label="Document" />
-        </div>
-        <p className="flex-1 text-right text-[12px] leading-4 text-muted-foreground">
-          {state.tab === "handoff" ? HANDOFF.disclaimer : "AI-generated analysis. Verify before acting on critical loads."}
-        </p>
+      <div className="flex items-center gap-1.5">
+        <AttachPill icon="/figma/drawer/camera.svg" label="Image" />
+        <AttachPill icon="/figma/drawer/paperclip.svg" label="Document" />
       </div>
     </div>
   );
 }
 
-/* DS Button, outline, size xs (design.verdigris.co/categories/web-
- * components/buttons): h-6, text-xs medium, px-1.5 with an icon, the
- * icon at size-3, 1px border on white with shadow-xs. Radius is the
- * product-ui control shape, radius.md (8px). */
+/* DS Button, ghost, size xs (design.verdigris.co/categories/web-
+ * components/buttons): no border or fill at rest, muted fill on hover;
+ * h-6, text-xs medium, px-1.5 with an icon, the icon at size-3. Radius
+ * is the product-ui control shape, radius.md (8px). */
 function AttachPill({ icon, label }: { icon: string; label: string }) {
   return (
     <button
       type="button"
-      className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-button border border-border bg-background px-1.5 text-[12px] font-medium leading-4 text-foreground shadow-xs transition-colors duration-150 hover:bg-secondary"
+      className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-button px-1.5 text-[12px] font-medium leading-4 text-foreground transition-colors duration-150 hover:bg-secondary"
     >
       <Icon src={icon} size={12} />
       {label}

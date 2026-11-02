@@ -81,8 +81,11 @@ export function SidePanel({ shown }: { shown: boolean }) {
         </motion.button>
       </div>
 
-      {/* Content on DS zinc 100, so the white boxes and Thinking cards sit on a light grey. */}
-      <div ref={scrollRef} className="scroll-quiet relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-zinc-100">
+      {/* Content in an inset well on DS neutral 50, rounded at radius.xl
+          (14px, the DS Card radius) since it holds the r10 boxes. The inset
+          lets its corners show, and it divides the panel from the column
+          to its left, so there's no separator line. */}
+      <div ref={scrollRef} className="scroll-quiet relative m-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-xl bg-neutral-50">
         <AnimatePresence mode="popLayout" initial={false}>
           {thinking && (
             <motion.div
