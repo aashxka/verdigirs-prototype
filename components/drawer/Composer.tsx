@@ -157,8 +157,8 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
   const stop = mode === "stop";
   return (
     /* No surface in any state: the icon alone carries it. An Enter
-     * arrow (↵), grey at rest, verdigris when there's a question to
-     * send or a search to stop. */
+     * arrow (↵), grey at rest and verdigris when there's a question
+     * to send; the Stop square is the resting grey. */
     <motion.button
       type="button"
       aria-label={stop ? "Stop" : "Send"}
@@ -180,7 +180,7 @@ function SendButton({ mode, onSend, onStop }: { mode: "idle" | "send" | "stop"; 
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.4, opacity: 0, transition: { duration: DUR.fast } }}
             transition={{ duration: DUR.normal, ease: EASE.reveal }}
-            className="block size-2.5 rounded-[2.5px] bg-verdigris-on-light"
+            className="block size-2.5 rounded-[2.5px] bg-subtle-foreground"
           />
         ) : (
           <motion.span
@@ -209,10 +209,11 @@ const swap = {
 export function ComposerFooter() {
   const { state } = usePrototype();
   return (
-    /* Full-width dock: plain white, rounded top, square bottom, no
-     * stroke, a soft shadow along the top edge only. */
+    /* Full-width dock on DS neutral.50 (the field stays white on it),
+     * rounded top, square bottom, no stroke, a soft shadow along the
+     * top edge only. */
     <div
-      className="flex w-full shrink-0 flex-col gap-3 rounded-t-[14px] bg-background p-4"
+      className="flex w-full shrink-0 flex-col gap-3 rounded-t-[14px] bg-neutral-50 p-4"
       style={{ boxShadow: "0 -1px 2px rgba(0,0,0,0.04), 0 -10px 24px -12px rgba(0,8,20,0.12)" }}
     >
       <Composer />

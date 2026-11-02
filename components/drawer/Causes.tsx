@@ -144,20 +144,20 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
               animate={{ width: 20, marginRight: 0, opacity: 1 }}
               exit={{ width: 0, marginRight: -12, opacity: 0, transition: { duration: DUR.normal, ease: EASE.standard } }}
               transition={{ duration: DUR.moderate, ease: EASE.reveal, delay: 0.2 }}
-              className="flex h-6 shrink-0 items-center overflow-hidden"
+              className="flex h-7 shrink-0 items-center overflow-hidden"
             >
               <TileRank n={rank} />
             </motion.span>
           )}
         </AnimatePresence>
         <h3
-          className={`type-title min-w-0 flex-1 text-pretty transition-colors duration-200 ${
+          className={`type-section min-w-0 flex-1 text-pretty transition-colors duration-200 ${
             ruledOut ? "text-muted-foreground" : "text-foreground"
           }`}
         >
           {cause.headline}
         </h3>
-        <span className="relative flex h-6 shrink-0 items-center">
+        <span className="relative flex h-7 shrink-0 items-center">
           <AnimatePresence mode="popLayout" initial={false}>
             {ruledOut ? (
               <motion.span key="ruled" {...swap} className="flex items-center gap-3 text-[14px] leading-5">
@@ -377,8 +377,8 @@ function TileSkeleton() {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-background shadow-xs" aria-hidden>
       <div className="flex items-center gap-3 px-6 pb-2 pt-6">
-        <span className="flex h-6 flex-1 items-center">
-          <span className="shimmer h-3.5 w-[58%] rounded-[4px]" />
+        <span className="flex h-7 flex-1 items-center">
+          <span className="shimmer h-4 w-[58%] rounded-[4px]" />
         </span>
         <span className="shimmer h-3 w-16 rounded-[4px]" />
       </div>

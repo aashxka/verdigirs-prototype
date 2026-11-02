@@ -45,6 +45,9 @@ export function SidePanel({ shown }: { shown: boolean }) {
   }, [key]);
 
   const cause = held ? causeById(held.cause) : null;
+  // The card whose details the panel shows: its boxes, or its Thinking
+  // when a click on it opened Thinking.
+  const named = thinking ? (state.thinkingFor ? causeById(state.thinkingFor) : null) : cause;
   const hasSim = !!held?.boxes.includes("simulate");
   const hasActions = !!held?.boxes.includes("actions");
 
@@ -67,9 +70,26 @@ export function SidePanel({ shown }: { shown: boolean }) {
       className="flex h-full shrink-0 flex-col bg-background"
       style={{ width: SIDE_W }}
     >
-      {/* Header: the panel's one close button. The thinking link sits
-          on the drawer header's line above it (Drawer.tsx). */}
-      <div className="flex h-12 shrink-0 items-center justify-end border-b border-border px-3">
+      {/* Header: the card it's showing, set like the tab labels beside
+          it (14 medium, foreground) at the content's 24px inset, then
+          the panel's one close button. */}
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-3">
+        <span className="grid min-w-0 flex-1 pl-3">
+          <AnimatePresence initial={false}>
+            {named && (
+              <motion.span
+                key={named.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: { duration: DUR.fast } }}
+                transition={{ duration: DUR.normal, ease: EASE.reveal }}
+                className="truncate text-[14px] font-medium leading-5 text-foreground [grid-area:1/1]"
+              >
+                {named.headline}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
         <motion.button
           type="button"
           onClick={actions.closeSide}
