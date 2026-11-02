@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { LOG, LOG_EVENTS, LOG_SEED, RECIPIENTS, type LogEntry, type LogItem } from "@/lib/data";
+import { LOG, LOG_EVENTS, LOG_SEED, RECIPIENTS, causeById, type LogEntry, type LogItem } from "@/lib/data";
 import { EASE } from "@/lib/motion";
 import { pickedMessages, usePrototype, type Picks } from "@/lib/store";
 import { Badge } from "../ui";
@@ -43,7 +43,11 @@ export function LogPanel() {
 }
 
 function sessionEntry(e: LogItem, picks: Picks): LogEntry {
-  if (e.key !== "handoff") return { id: e.key, time: e.time, ...LOG_EVENTS[e.key] };
+  const id = `${e.key}-${e.cause ?? 0}-${e.time}`;
+  if (e.key === "rule-out" || (e.key === "confirm" && e.cause && e.cause !== 1)) {
+    return { id, time: e.time, ...LOG_EVENTS[e.key], body: `${causeById(e.cause ?? 1).title}.` };
+  }
+  if (e.key !== "handoff") return { id, time: e.time, ...LOG_EVENTS[e.key] };
   // The handoff's own entry, written from what was actually sent.
   const n = pickedMessages(picks).length;
   const names = RECIPIENTS.filter((r) => picks[r.key]?.length).map((r) => r.name);

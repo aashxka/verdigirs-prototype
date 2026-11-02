@@ -1,19 +1,26 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { CONFIRMED_STEPS, TRIAGE_STEPS, type Step } from "@/lib/data";
+import { CAUSE_ACTIONS, type Cause, type Step } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
-import { usePrototype } from "@/lib/store";
+import { isRoot, usePrototype } from "@/lib/store";
 import { Badge, Button, Rank } from "../ui";
 
-/* Recommended steps. Triage (Create task / Escalate) until a cause is
- * confirmed, then the list re-ranks around cause #1 (Schedule). */
-export function RecommendedSteps() {
+/* A cause's recommended actions, in the side panel's Recommended
+ * actions box (rows only: the box is the card). Rack 14 shows
+ * triage (Create task / Escalate) until it's confirmed, then the
+ * list turns to the fix (work order, escalate, watch UPS-2). */
+export function causeActions(id: Cause["id"], confirmed: boolean) {
+  const a = CAUSE_ACTIONS[id];
+  return confirmed && a.confirmed ? a.confirmed : a;
+}
+
+export function RecommendedSteps({ cause }: { cause: Cause["id"] }) {
   const { state } = usePrototype();
-  const confirmed = state.feedback === "confirmed";
-  const steps = confirmed ? CONFIRMED_STEPS : TRIAGE_STEPS;
+  const confirmed = isRoot(state, cause) && !!CAUSE_ACTIONS[cause].confirmed;
+  const { steps } = causeActions(cause, confirmed);
   return (
-    <div className="w-full overflow-hidden rounded-lg border border-border bg-card">
+    <div className="w-full">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={confirmed ? "confirmed" : "triage"}
@@ -24,8 +31,8 @@ export function RecommendedSteps() {
               key={step.key}
               initial={{ opacity: 0, y: 6, filter: "blur(6px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: DUR.reveal, ease: EASE.reveal, delay: i * 0.09 }}
-              className={i < steps.length - 1 ? "border-b border-border" : ""}
+              transition={{ duration: DUR.reveal, ease: EASE.reveal, delay: 0.06 + i * 0.06 }}
+              className="border-t border-border"
             >
               <StepRow step={step} rank={i + 1} />
             </motion.div>
@@ -40,7 +47,7 @@ function StepRow({ step, rank }: { step: Step; rank: number }) {
   const { state, actions } = usePrototype();
   const status = state.steps[step.key] ?? "idle";
   return (
-    <div className="flex items-center gap-3 p-4">
+    <div className="flex items-center gap-3 py-4">
       <span className="flex self-stretch">
         <Rank n={rank} />
       </span>

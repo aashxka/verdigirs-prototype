@@ -1,8 +1,8 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { DUR, EASE, TIMING } from "@/lib/motion";
+import { DUR, EASE, SPRING, TIMING } from "@/lib/motion";
 import { usePrototype, type Tab, type Toast as ToastT } from "@/lib/store";
 import { Icon } from "../ui";
 import { ComposerFooter } from "./Composer";
@@ -11,6 +11,7 @@ import { HandoffPanel } from "./HandoffPanel";
 import { LogPanel } from "./LogPanel";
 import { RcaPanel } from "./RcaPanel";
 import { RelatedPanel } from "./RelatedPanel";
+import { SIDE_W, SidePanel } from "./SidePanel";
 
 const TABS: { label: string; tab: Tab }[] = [
   { label: "Root cause", tab: "rca" },
@@ -19,12 +20,30 @@ const TABS: { label: string; tab: Tab }[] = [
   { label: "Handoff", tab: "handoff" },
 ];
 
-/* Assistant drawer: non-modal, 600px, slides over the alert page. */
+const DRAWER_W = 600;
+
+/* Assistant drawer: non-modal, 600px, slides over the alert page.
+ * Simulate and Recommend actions widen it leftward by SIDE_W: the
+ * main column rides the leading edge, the side panel arrives from
+ * the right edge, and the header's close button stays put. The side
+ * panel belongs to Root cause, so other tabs narrow it back. */
 export function AssistantDrawer() {
   const { state, actions } = usePrototype();
   const open = state.drawer === "open";
+  const extended = state.tab === "rca" && state.side !== null;
+  const reduce = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+
+  // Esc closes the side panel first.
+  useEffect(() => {
+    if (!open || !extended) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") actions.closeSide();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, extended, actions]);
 
   // Bring the question to the top of the panel when it's sent.
   useEffect(() => {
@@ -48,9 +67,13 @@ export function AssistantDrawer() {
       aria-hidden={!open}
       inert={!open}
       initial={false}
-      animate={{ transform: open ? "translateX(0px)" : "translateX(640px)" }}
-      transition={{ duration: open ? DUR.drawer : DUR.drawerOut, ease: EASE.reveal }}
-      className="absolute right-0 top-0 z-20 flex h-full w-[600px] flex-col items-center border-l border-border bg-background shadow-drawer"
+      animate={{ transform: open ? "translateX(0%)" : "translateX(110%)", width: extended ? DRAWER_W + SIDE_W : DRAWER_W }}
+      transition={{
+        transform: { duration: open ? DUR.drawer : DUR.drawerOut, ease: EASE.reveal },
+        width: reduce ? { duration: 0 } : SPRING.panel,
+      }}
+      className="absolute right-0 top-0 z-20 flex h-full flex-col overflow-hidden border-l border-border bg-background shadow-drawer"
+      style={{ width: DRAWER_W }}
     >
       <header className="flex w-full shrink-0 items-center gap-2 py-4 pl-6 pr-4">
         <h2 className="flex-1 text-[24px] font-semibold leading-6 text-foreground">Signals Assistant</h2>
@@ -65,47 +88,59 @@ export function AssistantDrawer() {
         </motion.button>
       </header>
 
-      <nav className="flex h-12 w-full shrink-0 items-end gap-6 border-b border-border px-6" aria-label="Assistant sections">
-        {TABS.map(({ label, tab }) => {
-          const active = tab === state.tab;
-          return (
-            <button key={label} type="button" onClick={() => actions.setTab(tab)} aria-current={active ? "page" : undefined} className="group flex flex-col">
-              <span
-                className={`py-3 text-[14px] font-medium leading-5 transition-colors duration-150 ${
-                  active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground-secondary"
-                }`}
-              >
-                {label}
-              </span>
-              <span
-                className={`h-0.5 w-full origin-center rounded-t-[2px] bg-verdigris-on-light transition-[opacity,transform] duration-200 ease-[var(--ease-reveal)] ${
-                  active ? "scale-x-100 opacity-100" : "scale-x-50 opacity-0"
-                }`}
-              />
-            </button>
-          );
-        })}
-      </nav>
+      {/* Fixed-width strip, so nothing reflows while the drawer widens. */}
+      <div className="flex min-h-0 flex-1 self-start" style={{ width: DRAWER_W + SIDE_W }}>
+        <div className="relative flex h-full shrink-0 flex-col" style={{ width: DRAWER_W }}>
+          <nav className="flex h-12 w-full shrink-0 items-end gap-6 border-b border-border px-6" aria-label="Assistant sections">
+            {TABS.map(({ label, tab }) => {
+              const active = tab === state.tab;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => actions.setTab(tab)}
+                  aria-current={active ? "page" : undefined}
+                  className="group flex flex-col"
+                >
+                  <span
+                    className={`py-3 text-[14px] font-medium leading-5 transition-colors duration-150 ${
+                      active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground-secondary"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    className={`h-0.5 w-full origin-center rounded-t-[2px] bg-verdigris-on-light transition-[opacity,transform] duration-200 ease-[var(--ease-reveal)] ${
+                      active ? "scale-x-100 opacity-100" : "scale-x-50 opacity-0"
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </nav>
 
-      <div ref={scrollRef} className="scroll-quiet relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden">
-        {/* Panels stay mounted so switching tabs never replays the analysis. */}
-        <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "rca"}>
-          <RcaPanel />
-          <Conversation bubbleRef={bubbleRef} />
+          <div ref={scrollRef} className="scroll-quiet relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden">
+            {/* Panels stay mounted so switching tabs never replays the analysis. */}
+            <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "rca"}>
+              <RcaPanel />
+              <Conversation bubbleRef={bubbleRef} />
+            </div>
+            <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "related"}>
+              <RelatedPanel />
+            </div>
+            <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "log"}>
+              {state.logSeen && <LogPanel />}
+            </div>
+            <div className="tab-panel relative flex flex-col px-6 pb-20 pt-6" hidden={state.tab !== "handoff"}>
+              <HandoffPanel />
+            </div>
+          </div>
+
+          <ComposerFooter />
+          <ToastHost />
         </div>
-        <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "related"}>
-          <RelatedPanel />
-        </div>
-        <div className="tab-panel relative flex flex-col px-6 pb-8 pt-6" hidden={state.tab !== "log"}>
-          {state.logSeen && <LogPanel />}
-        </div>
-        <div className="tab-panel relative flex flex-col px-6 pb-20 pt-6" hidden={state.tab !== "handoff"}>
-          <HandoffPanel />
-        </div>
+        <SidePanel shown={open && extended} />
       </div>
-
-      <ComposerFooter />
-      <ToastHost />
     </motion.aside>
   );
 }
@@ -113,7 +148,8 @@ export function AssistantDrawer() {
 function ToastHost() {
   const { state } = usePrototype();
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[126px] z-10 flex justify-center">
+    // Bottom of the page, centred on the Assistant's main column; it rides over the composer briefly.
+    <div className="pointer-events-none absolute inset-x-0 bottom-5 z-10 flex justify-center">
       <AnimatePresence>{state.toast && <ToastView key={state.toast.id} toast={state.toast} />}</AnimatePresence>
     </div>
   );

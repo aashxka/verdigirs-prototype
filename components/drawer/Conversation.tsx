@@ -15,17 +15,9 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
   if (!state.asked) return null;
   const shown = state.answerShown;
 
-  // The simulator lives on the cause itself: open it there and bring it into view.
+  // The simulator lives in the side panel, beside the conversation.
   const simulateRoot = () => {
-    actions.openSim(1);
-    requestAnimationFrame(() => {
-      const el = document.getElementById("cause-1");
-      const sc = el?.closest<HTMLElement>(".scroll-quiet");
-      if (!el || !sc) return;
-      const scale = sc.getBoundingClientRect().height / sc.offsetHeight || 1;
-      const top = (el.getBoundingClientRect().top - sc.getBoundingClientRect().top) / scale + sc.scrollTop;
-      sc.scrollTo({ top: Math.max(0, top - 16), behavior: "smooth" });
-    });
+    actions.openSide(1, "simulate", "show");
   };
   return (
     <div className="flex min-h-[640px] w-full flex-col gap-4 pt-6">
@@ -115,7 +107,7 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
               <Section title={ANSWER.whatIfTitle}>
                 <OddsBlock
                   id={1}
-                  cta={{ label: state.feedback === "confirmed" ? "Simulate on root cause" : "Simulate on cause #1", onClick: simulateRoot }}
+                  cta={{ label: "Simulate", onClick: simulateRoot }}
                 />
               </Section>
             </Block>

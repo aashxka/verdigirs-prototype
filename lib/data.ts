@@ -9,39 +9,93 @@ export type Confidence = "High" | "Medium" | "Low";
 
 export type Source = { label: string; type: SourceType };
 
+/* Each likely cause is a tile: a plain-language headline, what
+ * happened in two short sentences, and the signal that shows it.
+ * `title` is the technical name the Log and the follow-up use. */
 export type Cause = {
   id: 1 | 2 | 3;
   title: string;
+  headline: string;
+  summary: string;
   confidence: Confidence;
   sources: Source[];
+  chart: CauseChart;
 };
+
+/* Tile chart: one signal over the analysed window (x = minutes
+ * after 11:30, so 52 is 12:22), its limit, and the 12:22
+ * power-on as a marker. No y-axis numbers: the shape and the
+ * limit carry it, as in the 11.0 tile. */
+export type CauseChart = {
+  label: string;
+  domain: [number, number];
+  limit: { value: number; label: string };
+  points: [number, number][];
+};
+
+export const POWER_ON = { at: 52, label: "12:22 servers on" };
 
 export const CAUSES: Cause[] = [
   {
     id: 1,
     title: "Non-linear load switching on PDU-01-A9F",
+    headline: "Rack 14 is overloading PDU-01-A9F",
+    summary: "12 new servers came on at 12:22. Distortion jumped within 8 min. Same thing happened in March.",
     confidence: "High",
     sources: [
       { label: "PDU-01-A9F sensor", type: "sensor" },
       { label: "CHG-2291", type: "change" },
     ],
+    chart: {
+      label: "THDi · Phase A",
+      domain: [-8, 190],
+      limit: { value: 5, label: "Safe limit" },
+      points: [
+        [0, 3], [8, 3.4], [16, 2.8], [24, 3.2], [32, 3], [40, 3.3], [48, 3.1], [52, 3.4],
+        [55, 70], [58, 150], [60, 176], [66, 180], [74, 171], [84, 178], [94, 172], [104, 177], [112, 174], [120, 176],
+      ],
+    },
   },
   {
     id: 2,
     title: "UPS-2 rectifier capacitor wear",
+    headline: "UPS-2’s rectifier capacitors are wearing",
+    summary: "Ripple has crept up to 6% since 12:22. Failures start at 15%, so wear alone doesn’t explain the spike.",
     confidence: "Medium",
     sources: [
       { label: "UPS-2 waveform", type: "sensor" },
       { label: "Incident #482", type: "incident" },
     ],
+    chart: {
+      label: "UPS-2 ripple",
+      domain: [0, 17],
+      limit: { value: 15, label: "Failure level" },
+      points: [
+        [0, 2], [12, 2.1], [24, 1.9], [36, 2.1], [48, 2], [52, 2.1],
+        [60, 2.9], [70, 3.7], [80, 4.4], [90, 5], [100, 5.5], [110, 5.8], [120, 6],
+      ],
+    },
   },
   {
     id: 3,
     title: "Phase A load imbalance on Panel B",
+    headline: "Panel B’s Phase A is carrying extra load",
+    summary: "The imbalance started 3 days before the spike and didn’t change at 12:22.",
     confidence: "Low",
     sources: [{ label: "Panel B sensor", type: "sensor" }],
+    chart: {
+      label: "Phase A imbalance · Panel B",
+      domain: [0, 20],
+      limit: { value: 10, label: "Safe limit" },
+      points: [
+        [0, 13.4], [10, 13.8], [20, 13.2], [30, 13.6], [40, 13.3], [52, 13.7],
+        [60, 13.5], [70, 13.9], [80, 13.4], [90, 13.7], [100, 13.3], [110, 13.6], [120, 13.5],
+      ],
+    },
   },
 ];
+
+export const causeById = (id: Cause["id"]) => CAUSES.find((c) => c.id === id)!;
 
 export const DATA_WINDOW = "Data from 11:30–13:30";
 
@@ -108,11 +162,22 @@ const ESCALATE: Step = {
   toast: "Escalated to the facilities lead",
 };
 
+const INSPECT_UPS: Step = {
+  key: "inspect-ups",
+  title: "Inspect UPS-2 rectifier",
+  body: "Rack 14’s harmonics are wearing its capacitors. Marco Diaz is free Tue 09:00.",
+  cta: "Schedule",
+  ctaKind: "secondary",
+  done: "Scheduled · Tue 09:00",
+  toast: "Maintenance scheduled with Marco Diaz for Tue, Oct 20, 09:00–10:30",
+  opensDialog: true,
+};
+
 export const TRIAGE_STEPS: Step[] = [
   {
     key: "task",
     title: "Inspect non-linear loads on rack 14",
-    body: "Confirms cause #1 on site in about 5 min",
+    body: "Confirms this cause on site in about 5 min",
     cta: "Create task",
     ctaKind: "primary",
     done: "Task T-2214 created",
@@ -132,21 +197,59 @@ export const CONFIRMED_STEPS: Step[] = [
     toast: "Work order WO-1182 created to move rack 14 load to PDU-02",
   },
   ESCALATE,
-  {
-    key: "inspect-ups",
-    title: "Inspect UPS-2 rectifier",
-    tag: "Optional",
-    body: "Rack 14’s harmonics are wearing its capacitors. Marco Diaz is free Tue 09:00.",
-    cta: "Schedule",
-    ctaKind: "secondary",
-    done: "Scheduled · Tue 09:00",
-    toast: "Maintenance scheduled with Marco Diaz for Tue, Oct 20, 09:00–10:30",
-    opensDialog: true,
-  },
+  { ...INSPECT_UPS, tag: "Optional" },
 ];
 
-/* Steps that only exist once a cause is confirmed (undo clears these). */
-export const CONFIRMED_ONLY = CONFIRMED_STEPS.filter((s) => !TRIAGE_STEPS.includes(s)).map((s) => s.key);
+/* Recommended actions per cause, shown in the side panel. Rack 14
+ * checks first and turns to the fix once you confirm it; the other
+ * two have one list. Their steps come from the what-if levers
+ * (CAUSE_ODDS) and the Panel B fix in Related issues. */
+export type CauseActions = { intro: string; steps: Step[]; confirmed?: { intro: string; steps: Step[] } };
+
+export const CAUSE_ACTIONS: Record<Cause["id"], CauseActions> = {
+  1: {
+    intro: "These check the cause on site. Confirm it to get the fix.",
+    steps: TRIAGE_STEPS,
+    confirmed: { intro: "Fix steps for the root cause you confirmed.", steps: CONFIRMED_STEPS },
+  },
+  2: {
+    intro: "Check the capacitors first, then take load off UPS-2.",
+    steps: [
+      { ...INSPECT_UPS, ctaKind: "primary", body: "Measures capacitor wear against incident #482. Marco Diaz is free Tue 09:00." },
+      {
+        key: "shift-ups",
+        title: "Shift 15% of UPS-2’s load to UPS-1",
+        body: "Keeps N+1. UPS-2 failure odds drop from 76% to 64%.",
+        cta: "Create work order",
+        ctaKind: "secondary",
+        done: "Work order created",
+        toast: "Work order created to shift 15% of UPS-2’s load to UPS-1",
+      },
+      ESCALATE,
+    ],
+  },
+  3: {
+    intro: "Fixing this won’t change UPS-2’s failure odds.",
+    steps: [
+      {
+        key: "rebalance",
+        title: "Rebalance Panel B circuits",
+        body: "Spreads Phase A’s extra load across B and C.",
+        cta: "Create task",
+        ctaKind: "primary",
+        done: "Task created",
+        toast: "Task created to rebalance Panel B circuits",
+      },
+      ESCALATE,
+    ],
+  },
+};
+
+export const ALL_STEPS: Step[] = [...TRIAGE_STEPS, ...CONFIRMED_STEPS, ...CAUSE_ACTIONS[2].steps, ...CAUSE_ACTIONS[3].steps];
+
+/* Steps that only exist once rack 14 is confirmed (undo clears these). */
+const ALWAYS = new Set([...TRIAGE_STEPS, ...CAUSE_ACTIONS[2].steps, ...CAUSE_ACTIONS[3].steps].map((s) => s.key));
+export const CONFIRMED_ONLY = CONFIRMED_STEPS.map((s) => s.key).filter((k) => !ALWAYS.has(k));
 
 export const SCHEDULE_DIALOG: Record<string, { subtitle: string; instructions: string }> = {
   "inspect-ups": {
@@ -272,7 +375,10 @@ export type HandoffMessage =
   | { kind: "sms"; text: string };
 
 export type Channel = { key: ChannelKey; label: string; to: string; write: (log: LogItem[]) => HandoffMessage };
-export type Recipient = { key: PersonKey; audience: string; name: string; channels: Channel[] };
+/* photo: a headshot under /public, shown in a circle beside the name.
+ * Ana's and Jordan's are Unsplash License stock photos (free to use,
+ * no attribution needed): photo-1494790108377 and photo-1560250097. */
+export type Recipient = { key: PersonKey; audience: string; name: string; photo?: string; channels: Channel[] };
 
 export const HANDOFF = {
   intro: "Pick who it’s for and where to send it. Each message is written from the Log for its reader.",
@@ -281,17 +387,24 @@ export const HANDOFF = {
 };
 
 /* What each Log event reads as in a handoff, in the sender's voice. */
-const DID: Record<Exclude<LogKey, "handoff">, string> = {
+const DID: Record<Exclude<LogKey, "handoff" | "confirm" | "rule-out">, string> = {
   analysis: "Ran the root cause analysis",
-  confirm: "Confirmed rack 14’s new servers as the cause",
   task: "Opened T-2214 to inspect rack 14",
   escalate: "Escalated to Jordan Lee",
   "move-load": "Opened WO-1182 to move rack 14 load to PDU-02",
   "inspect-ups": "Booked the UPS-2 inspection for Tue 09:00",
+  "shift-ups": "Opened a work order to shift 15% of UPS-2’s load to UPS-1",
+  rebalance: "Opened a task to rebalance Panel B circuits",
 };
 
+function didText(e: LogItem) {
+  if (e.key === "confirm") return e.cause && e.cause !== 1 ? `Confirmed ${causeById(e.cause).title.toLowerCase()} as the cause` : "Confirmed rack 14’s new servers as the cause";
+  if (e.key === "rule-out") return `Ruled out ${causeById(e.cause ?? 1).title.toLowerCase()}`;
+  return DID[e.key as keyof typeof DID];
+}
+
 function did(log: LogItem[]) {
-  return log.flatMap((e) => (e.key === "handoff" ? [] : [{ time: e.time, text: DID[e.key] }]));
+  return log.flatMap((e) => (e.key === "handoff" ? [] : [{ time: e.time, text: didText(e) }]));
 }
 
 function stillOpen(log: LogItem[]) {
@@ -304,7 +417,8 @@ function stillOpen(log: LogItem[]) {
   ].filter((x): x is string => !!x);
 }
 
-const confirmed = (log: LogItem[]) => log.some((e) => e.key === "confirm");
+/* The handoff copy is written around rack 14, so only its confirm counts. */
+const confirmed = (log: LogItem[]) => log.some((e) => e.key === "confirm" && (e.cause ?? 1) === 1);
 const sentence = (parts: string[]) => parts.join(". ") + ".";
 const WATCH = `UPS-2 has a ${ODDS_NOW}% chance of failing in the next 6 h while the load stays.`;
 
@@ -313,6 +427,7 @@ export const RECIPIENTS: Recipient[] = [
     key: "tech",
     audience: "Next shift tech",
     name: "Ana Ruiz",
+    photo: "/people/ana-ruiz.jpg",
     channels: [
       {
         key: "servicenow",
@@ -369,6 +484,7 @@ export const RECIPIENTS: Recipient[] = [
     key: "lead",
     audience: "Leadership",
     name: "Jordan Lee",
+    photo: "/people/jordan-lee.jpg",
     channels: [
       {
         key: "slack",
@@ -541,8 +657,9 @@ export function formatIssueDate(iso: string) {
  * "Log item" (1424:4491).
  * ───────────────────────────────────────────────────────── */
 export type LogEntry = { id: string; time: string; title: string; body: string; who: string; ai?: boolean };
-export type LogKey = "analysis" | "confirm" | "task" | "escalate" | "move-load" | "inspect-ups" | "handoff";
-export type LogItem = { key: LogKey; time: string };
+export type LogKey = "analysis" | "confirm" | "rule-out" | "task" | "escalate" | "move-load" | "inspect-ups" | "shift-ups" | "rebalance" | "handoff";
+/* confirm and rule-out name the cause they were about. */
+export type LogItem = { key: LogKey; time: string; cause?: Cause["id"] };
 
 export const LOG = {
   intro: "Every action on this alert, by people and the Assistant.",
@@ -569,7 +686,8 @@ export const LOG_SEED: LogEntry[] = [
   },
 ];
 
-/* Session events. "handoff" is written from what was sent (LogPanel). */
+/* Session events. "handoff" is written from what was sent (LogPanel);
+ * confirm and rule-out swap in the cause's name when it isn't rack 14. */
 export const LOG_EVENTS: Record<Exclude<LogKey, "handoff">, Omit<LogEntry, "id" | "time">> = {
   analysis: {
     title: "Root cause analysis",
@@ -580,6 +698,11 @@ export const LOG_EVENTS: Record<Exclude<LogKey, "handoff">, Omit<LogEntry, "id" 
   confirm: {
     title: "Root cause confirmed",
     body: "Non-linear load switching from rack 14’s new servers.",
+    who: "You",
+  },
+  "rule-out": {
+    title: "Cause ruled out",
+    body: "",
     who: "You",
   },
   task: {
@@ -603,5 +726,17 @@ export const LOG_EVENTS: Record<Exclude<LogKey, "handoff">, Omit<LogEntry, "id" 
     title: "Inspection scheduled",
     body: "UPS-2 rectifier, with Marco Diaz, Tue 09:00.",
     who: "You",
+  },
+  "shift-ups": {
+    title: "Work order created",
+    body: "Shift 15% of UPS-2’s load to UPS-1.",
+    who: "Signals Assistant · approved by you",
+    ai: true,
+  },
+  rebalance: {
+    title: "Task created",
+    body: "Rebalance Panel B circuits.",
+    who: "Signals Assistant · approved by you",
+    ai: true,
   },
 };

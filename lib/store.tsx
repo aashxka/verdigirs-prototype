@@ -2,15 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef } from "react";
 import {
+  ALL_STEPS,
   CAUSE_ODDS,
   CAUSES,
   CONFIRMED_ONLY,
-  CONFIRMED_STEPS,
   QUESTION,
   RECIPIENTS,
   SEARCH_STEPS,
   TRACE_STEPS,
-  TRIAGE_STEPS,
   clockTime,
   type Cause,
   type ChannelKey,
@@ -30,7 +29,12 @@ import { TIMING } from "./motion";
  * ───────────────────────────────────────────────────────── */
 
 export type StepStatus = "idle" | "working" | "done";
-export type Undo = { kind: "confirm" } | { kind: "step"; key: string };
+export type Undo = { kind: "confirm"; prev: Cause["id"] | null } | { kind: "step"; key: string };
+/* The drawer's extension: one cause's Simulation and/or Recommended
+ * actions boxes, always in that order (actions sit below the sim). */
+export type SideView = "simulate" | "actions";
+export type Side = { cause: Cause["id"]; boxes: SideView[] };
+const BOX_ORDER: SideView[] = ["simulate", "actions"];
 export type Toast = { id: number; text: string; undo?: Undo };
 export type ChatPhase = "idle" | "typing" | "ready" | "searching" | "answering" | "done";
 export type Tab = "rca" | "related" | "log" | "handoff";
@@ -53,10 +57,13 @@ export type State = {
   traceDone: number;
   traceFolded: boolean;
   causesShown: number;
-  stepsShown: boolean;
-  expanded: boolean;
-  reasoningOpen: boolean;
-  feedback: "none" | "confirming" | "confirmed";
+  /* The confirmed root cause (only one at a time), and the cause
+   * whose Yes is still spinning. The root keeps its place until the
+   * new one lands. */
+  root: Cause["id"] | null;
+  confirming: Cause["id"] | null;
+  ruledOut: Cause["id"][];
+  side: Side | null;
   steps: Record<string, StepStatus>;
   dialog: { stepKey: string; submitting: boolean } | null;
   toast: Toast | null;
@@ -66,9 +73,7 @@ export type State = {
   searchFolded: boolean;
   answerShown: number;
   asked: boolean;
-  /* Per-cause failure-odds simulators: which are open, and the stop
-   * each one's lever sits on. */
-  simOpen: Cause["id"][];
+  /* The stop each cause's what-if lever sits on. */
   simStop: Record<Cause["id"], number>;
   picks: Picks;
   handoff: HandoffPhase;
@@ -93,10 +98,10 @@ const initial: State = {
   traceDone: 0,
   traceFolded: false,
   causesShown: 0,
-  stepsShown: false,
-  expanded: false,
-  reasoningOpen: false,
-  feedback: "none",
+  root: null,
+  confirming: null,
+  ruledOut: [],
+  side: null,
   steps: {},
   dialog: null,
   toast: null,
@@ -106,7 +111,6 @@ const initial: State = {
   searchFolded: false,
   answerShown: 0,
   asked: false,
-  simOpen: [],
   simStop: { 1: 0, 2: 0, 3: 0 },
   picks: { tech: null, lead: null },
   handoff: "pick",
@@ -117,6 +121,8 @@ const initial: State = {
   tick: 0,
   handoffDraft: null,
 };
+
+export const isRoot = (s: State, id: Cause["id"]) => s.root === id;
 
 /* Messages to write, in the order they appear: person, then channel. */
 export function pickedMessages(picks: Picks) {
@@ -131,8 +137,8 @@ type Action =
   | { type: "step"; key: string; status: StepStatus }
   | { type: "toast"; text: string; undo?: Undo }
   | { type: "dismissToast"; id: number }
-  | { type: "log"; key: LogKey }
-  | { type: "unlog"; keys: string[] };
+  | { type: "log"; key: LogKey; cause?: Cause["id"] }
+  | { type: "unlog"; keys: string[]; cause?: Cause["id"] };
 
 let toastId = 0;
 
@@ -149,9 +155,12 @@ function reducer(state: State, action: Action): State {
     case "dismissToast":
       return state.toast?.id === action.id ? { ...state, toast: null } : state;
     case "log":
-      return { ...state, log: [...state.log, { key: action.key, time: clockTime(state.tick) }], tick: state.tick + 1 };
+      return { ...state, log: [...state.log, { key: action.key, time: clockTime(state.tick), cause: action.cause }], tick: state.tick + 1 };
     case "unlog":
-      return { ...state, log: state.log.filter((e) => !action.keys.includes(e.key)) };
+      return {
+        ...state,
+        log: state.log.filter((e) => !(action.keys.includes(e.key) && (action.cause === undefined || e.cause === action.cause))),
+      };
   }
 }
 
@@ -206,8 +215,8 @@ function useController() {
     CAUSES.forEach((_, i) =>
       after("analysis", t0 + TIMING.causesStart + i * TIMING.causeStagger, () => patch({ causesShown: i + 1 })),
     );
-    after("analysis", t0 + TIMING.stepsAppear, () => {
-      patch({ stepsShown: true, analysis: "done" });
+    after("analysis", t0 + TIMING.analysisDone, () => {
+      patch({ analysis: "done" });
       dispatch({ type: "log", key: "analysis" });
     });
   }, [after, clear, patch]);
@@ -230,26 +239,68 @@ function useController() {
       closeDrawer() {
         patch({ drawer: "closed", investigating: false });
       },
-      toggleCause() {
+      /* Yes on a tile. Confirming another cause moves the root cause
+       * to it; undo puts the previous root back. */
+      confirm(id: Cause["id"]) {
         const s = ref.current;
-        if (s.feedback === "confirming") return;
-        patch({ expanded: !s.expanded, reasoningOpen: s.expanded ? false : s.reasoningOpen });
-      },
-      toggleReasoning() {
-        patch({ reasoningOpen: !ref.current.reasoningOpen });
-      },
-      confirm() {
-        if (ref.current.feedback !== "none") return;
-        patch({ feedback: "confirming" });
+        if (s.confirming || s.root === id || s.ruledOut.includes(id)) return;
+        const prev = s.root;
+        patch({ confirming: id });
         clear("confirm");
         after("confirm", TIMING.confirmSpinner, () => {
-          patch({ feedback: "confirmed", expanded: false, reasoningOpen: false });
-          dispatch({ type: "log", key: "confirm" });
-          after("confirm", 260, () => toast("Marked as the root cause.", { kind: "confirm" }));
+          patch({ root: id, confirming: null });
+          if (prev) dispatch({ type: "unlog", keys: ["confirm"] });
+          dispatch({ type: "log", key: "confirm", cause: id });
+          after("confirm", 260, () => toast("Marked as the root cause.", { kind: "confirm", prev }));
         });
       },
+      /* No on a tile: it folds down to its headline, with Undo beside it. */
+      ruleOut(id: Cause["id"]) {
+        const s = ref.current;
+        if (s.ruledOut.includes(id) || s.root === id || s.confirming === id) return;
+        patch({ ruledOut: [...s.ruledOut, id], side: s.side?.cause === id ? null : s.side });
+        dispatch({ type: "log", key: "rule-out", cause: id });
+      },
+      restoreCause(id: Cause["id"]) {
+        patch({ ruledOut: ref.current.ruledOut.filter((x) => x !== id) });
+        dispatch({ type: "unlog", keys: ["rule-out"], cause: id });
+      },
+      /* Simulate and Recommend actions open the drawer's side panel,
+       * each as its own box. For the cause already showing, a tile
+       * button adds its box or takes it away (the last one closes the
+       * panel); "show" only ever adds. Another cause starts fresh. On
+       * Simulate, a beat after the panel lands the lever glides to its
+       * recommended stop, so the odds visibly fall. */
+      openSide(id: Cause["id"], view: SideView, mode: "toggle" | "show" = "toggle") {
+        const s = ref.current;
+        const same = s.side?.cause === id;
+        const current = same ? s.side!.boxes : [];
+        if (current.includes(view)) {
+          if (mode === "show") return;
+          const boxes = current.filter((b) => b !== view);
+          if (!boxes.length) {
+            actions.closeSide();
+            return;
+          }
+          if (view === "simulate") clear("sim");
+          patch({ side: { cause: id, boxes } });
+          return;
+        }
+        if (!same) clear("sim");
+        patch({ side: { cause: id, boxes: BOX_ORDER.filter((b) => b === view || current.includes(b)) } });
+        const { lever, preset } = CAUSE_ODDS[id];
+        if (view === "simulate" && lever && s.simStop[id] === 0) {
+          after("sim", s.side ? TIMING.simPrime : TIMING.simPrimeOpening, () =>
+            patch({ simStop: { ...ref.current.simStop, [id]: preset } }),
+          );
+        }
+      },
+      closeSide() {
+        clear("sim");
+        patch({ side: null });
+      },
       runStep(key: string) {
-        const step = [...TRIAGE_STEPS, ...CONFIRMED_STEPS].find((s) => s.key === key);
+        const step = ALL_STEPS.find((s) => s.key === key);
         if (!step || ref.current.steps[key] === "working" || ref.current.steps[key] === "done") return;
         if (step.opensDialog) {
           patch({ dialog: { stepKey: key, submitting: false } });
@@ -268,7 +319,7 @@ function useController() {
       submitDialog() {
         const d = ref.current.dialog;
         if (!d || d.submitting) return;
-        const step = CONFIRMED_STEPS.find((s) => s.key === d.stepKey);
+        const step = ALL_STEPS.find((s) => s.key === d.stepKey);
         patch({ dialog: { ...d, submitting: true } });
         after("step", TIMING.actionSpinner, () => {
           patch({ dialog: null });
@@ -281,11 +332,14 @@ function useController() {
         dispatch({ type: "dismissToast", id: t.id });
         if (!t.undo) return;
         if (t.undo.kind === "confirm") {
-          // Escalate is in both step lists, so an escalation survives the undo.
+          // Only the fix steps that appear after rack 14 is confirmed are
+          // undone; escalation and the other causes' steps survive.
+          const { prev } = t.undo;
           const steps = { ...ref.current.steps };
-          CONFIRMED_ONLY.forEach((k) => delete steps[k]);
-          patch({ feedback: "none", steps });
-          dispatch({ type: "unlog", keys: ["confirm", ...CONFIRMED_ONLY] });
+          if (prev !== 1) CONFIRMED_ONLY.forEach((k) => delete steps[k]);
+          patch({ root: prev, steps });
+          dispatch({ type: "unlog", keys: ["confirm", ...(prev === 1 ? [] : CONFIRMED_ONLY)] });
+          if (prev) dispatch({ type: "log", key: "confirm", cause: prev });
         } else {
           dispatch({ type: "step", key: t.undo.key, status: "idle" });
           dispatch({ type: "unlog", keys: [t.undo.key] });
@@ -403,27 +457,8 @@ function useController() {
         clear("chat");
         patch({ chat: "idle", typed: 0, asked: false, searchDone: 0, searchFolded: false, answerShown: 0 });
       },
-      /* Simulate opens a cause's simulator, and a beat after the panel
-       * lands its lever glides to the recommended stop, so the odds
-       * visibly fall instead of showing Now and After as equal. */
-      toggleSim(id: Cause["id"]) {
-        const s = ref.current;
-        clear(`sim-${id}`);
-        if (s.simOpen.includes(id)) {
-          patch({ simOpen: s.simOpen.filter((x) => x !== id) });
-          return;
-        }
-        patch({ simOpen: [...s.simOpen, id] });
-        const { lever, preset } = CAUSE_ODDS[id];
-        if (lever && s.simStop[id] === 0) {
-          after(`sim-${id}`, TIMING.simPrime, () => patch({ simStop: { ...ref.current.simStop, [id]: preset } }));
-        }
-      },
-      openSim(id: Cause["id"]) {
-        if (!ref.current.simOpen.includes(id)) actions.toggleSim(id);
-      },
       setSimStop(id: Cause["id"], stop: number) {
-        clear(`sim-${id}`);
+        clear("sim");
         const s = ref.current.simStop;
         if (s[id] !== stop) patch({ simStop: { ...s, [id]: stop } });
       },

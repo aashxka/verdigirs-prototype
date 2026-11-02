@@ -225,7 +225,9 @@ function useFlip(container: React.RefObject<HTMLDivElement | null>, arrangement:
 }
 
 /* DS: Related issue row (1268:2114). Default / Hover / Expanded;
- * expanded shows how the issue was resolved. */
+ * expanded shows how the issue was resolved. View issue sits over
+ * the row as its own control, so it isn't a button inside a button.
+ * Issue pages aren't part of the prototype, so it goes nowhere. */
 function IssueRow({ issue, last }: { issue: RelatedIssue; last: boolean }) {
   const { state, actions } = usePrototype();
   const open = state.related.open.includes(issue.id);
@@ -251,7 +253,7 @@ function IssueRow({ issue, last }: { issue: RelatedIssue; last: boolean }) {
       >
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex flex-col gap-1">
-            <span className="text-[14px] font-medium leading-5 text-foreground">{issue.title}</span>
+            <span className="pr-24 text-[14px] font-medium leading-5 text-foreground">{issue.title}</span>
             <span className="font-mono text-[12px] leading-4 text-foreground-tertiary">
               {formatIssueDate(issue.date)} {issue.equipment}
               {issue.ref && ` · ${issue.ref}`}
@@ -289,6 +291,13 @@ function IssueRow({ issue, last }: { issue: RelatedIssue; last: boolean }) {
           <Icon src="/figma/drawer/chevron.svg" size={16} />
         </motion.span>
       </div>
+      <button
+        type="button"
+        className="group absolute right-11 top-4 flex h-5 items-center gap-1 text-[14px] font-medium leading-5 text-verdigris-on-light underline-offset-4 hover:underline"
+      >
+        View issue
+        <Icon src="/figma/whatif/arrow-right.svg" size={12} className="-rotate-45" />
+      </button>
     </div>
   );
 }

@@ -132,7 +132,6 @@ export function HandoffPanel() {
               <Button kind="primary" disabled={n === 0} loading={phase === "writing"} onClick={actions.generate}>
                 {n === 0 ? "Generate messages" : `Generate ${n} ${n === 1 ? "message" : "messages"}`}
               </Button>
-              {n === 0 && <span className="text-[14px] leading-5 text-muted-foreground">Pick a person and a channel.</span>}
             </motion.span>
           )}
         </AnimatePresence>
@@ -157,7 +156,10 @@ function PersonRow({ recipient, last, locked }: { recipient: Recipient; last: bo
       >
         <Checkbox checked={on} />
         <span className="flex-1 text-[14px] font-medium leading-5 text-foreground">{recipient.audience}</span>
-        <span className="text-[14px] leading-5 text-muted-foreground">{recipient.name}</span>
+        <span className="flex items-center gap-2">
+          <Avatar name={recipient.name} photo={recipient.photo} />
+          <span className="text-[14px] leading-5 text-muted-foreground">{recipient.name}</span>
+        </span>
       </button>
       <Collapse open={on} inMs={300} outMs={200}>
         <div className="flex flex-wrap gap-2 pb-4 pl-[42px] pr-4" role="group" aria-label={`Channels for ${recipient.name}`}>
@@ -173,6 +175,25 @@ function PersonRow({ recipient, last, locked }: { recipient: Recipient; last: bo
         </div>
       </Collapse>
     </div>
+  );
+}
+
+/* A person's face, or their initials until a photo is added. */
+function Avatar({ name, photo }: { name: string; photo?: string }) {
+  const initials = name
+    .split(" ")
+    .map((w) => w[0])
+    .join("");
+  return photo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={photo} alt="" className="size-6 shrink-0 rounded-full object-cover ring-1 ring-black/5" draggable={false} />
+  ) : (
+    <span
+      aria-hidden
+      className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-muted text-[10px] font-semibold leading-none text-verdigris-on-light"
+    >
+      {initials}
+    </span>
   );
 }
 

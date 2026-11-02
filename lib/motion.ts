@@ -12,25 +12,33 @@
  *   800   drawer slides in from the right (300ms), page dims to 8%
  *   950   trace card fades up; steps tick off one by one
  *  3150   trace folds away (250ms)
- *  3350   likely causes resolve out of their skeletons (staggered 260ms)
- *  4250   recommended steps settle in (staggered 90ms)
+ *  3350   three cause tiles resolve out of their skeletons (staggered
+ *         260ms); each tile's signal line draws left to right (900ms)
+ *  4250   analysis done: the composer wakes up
  *
- * CONFIRM CAUSE #1  (the verdict sits after the evidence and rides
- * the bottom of the scroll while the evidence is on screen)
- *     0   Confirm shows a spinner, Rule out dims
- *   700   detail collapses (200ms), "Likely causes" → "Root cause",
- *         rank 1 turns into a check, "Confirmed by you" pops in
- *   700   the list parts: "Other possible causes" opens between the
- *         halves (300ms) as their corners round off
- *   820   the other causes' numbers roll up, 2 → 1, 3 → 2 (staggered 60ms)
- *   850   steps re-rank: fix, escalate, watch UPS-2
+ * SIMULATE / RECOMMEND ACTIONS (any tile)
+ *     0   the drawer widens 600 → 1200 on a critically damped spring
+ *         (~420ms). The tiles ride its leading edge left; the side
+ *         panel arrives from the right edge, the way it will leave.
+ *         The tile it belongs to takes a verdigris ring.
+ *    60   side panel contents settle in (fade, 12px, blur 4 → 0)
+ *     0   Recommend actions under the simulation: its box opens below
+ *         (300ms) and the panel scrolls to it
+ *   560   (Simulate) the lever glides to its recommended stop; After
+ *         rolls down and the projection swings toward the 15% line
+ *     0   another tile: contents crossfade in place; the same tile's
+ *         other button adds or removes that box (300ms)
+ *     0   close (⇥, Esc, or the pressed button again): the drawer
+ *         narrows and the panel rides out to the right
+ *
+ * YES (confirm a tile)
+ *     0   Yes shows a spinner, No dims
+ *   700   confidence swaps for "Root cause", the footer reads "You
+ *         confirmed this", rack 14's actions turn to the fix steps
  *   950   toast rises from the footer, dismisses after 5s
  *
- * SIMULATE (any likely cause)
- *     0   the cause row tints and its simulator opens under the odds
- *         block (300ms), contents fade up at +60ms
- *   380   the lever glides to its recommended stop; After rolls down
- *         and the projection swings toward the 15% failure line
+ * NO (rule a tile out)
+ *     0   the tile folds to its headline (300ms) beside Undo
  *
  * FOLLOW-UP QUESTION (ms after Send)
  *     0   question bubble lands; composer reads "Searching…" beside
@@ -86,9 +94,10 @@ export const TIMING = {
   traceFolds: 2400,
   causesStart: 2600,
   causeStagger: 260,
-  stepsAppear: 3500,
+  analysisDone: 3500,
   confirmSpinner: 700,
-  simPrime: 380, // Simulate → lever glides to its recommended stop
+  simPrime: 380, // Simulate in an open side panel → lever glides to its recommended stop
+  simPrimeOpening: 560, // same, while the side panel is still widening
   toastLife: 5000,
   actionSpinner: 520,
   typeChar: 26, // base ms per character when auto-typing
@@ -109,6 +118,9 @@ export const SPRING = {
   pop: { type: "spring" as const, stiffness: 520, damping: 32, mass: 0.8 },
   // Knob follows the pointer while dragging
   drag: { type: "spring" as const, stiffness: 900, damping: 60 },
+  // Drawer widening for the side panel: critically damped, no
+  // overshoot (a button opened it, not a flick)
+  panel: { type: "spring" as const, bounce: 0, visualDuration: 0.42 },
 };
 
 /* A reveal that resolves out of a soft blur: used for AI output. */

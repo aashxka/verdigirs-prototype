@@ -50,16 +50,16 @@ const CONF_TONE: Record<Confidence, { bar: string; off: string; text: string; li
   Low: { bar: "bg-neutral-500", off: "bg-border", text: "text-foreground-tertiary", lit: 1 },
 };
 
-export function ConfidenceLabel({ level }: { level: Confidence }) {
+export function ConfidenceLabel({ level, label }: { level: Confidence; label?: string }) {
   const tone = CONF_TONE[level];
   return (
-    <span className="inline-flex shrink-0 items-center gap-1" aria-label={`${level} confidence`}>
+    <span className="inline-flex shrink-0 items-center gap-1" aria-label={label ?? `${level} confidence`}>
       <span className="flex items-end gap-0.5" aria-hidden>
         {[6, 9, 12].map((h, i) => (
           <span key={h} className={`w-[3px] rounded-[1px] ${i < tone.lit ? tone.bar : tone.off}`} style={{ height: h }} />
         ))}
       </span>
-      <span className={`text-[12px] font-medium leading-4 ${tone.text}`}>{level}</span>
+      <span className={`text-[12px] font-medium leading-4 ${tone.text}`}>{label ?? level}</span>
     </span>
   );
 }
@@ -102,6 +102,7 @@ export function Button({
   className = "",
   ariaLabel,
   ariaExpanded,
+  pressed,
 }: {
   kind?: "primary" | "secondary" | "ghost";
   loading?: boolean;
@@ -111,10 +112,14 @@ export function Button({
   className?: string;
   ariaLabel?: string;
   ariaExpanded?: boolean;
+  /* Toggle buttons: pressed sinks into the secondary fill. */
+  pressed?: boolean;
 }) {
   const cls = {
     primary: "bg-primary text-primary-foreground hover:bg-[#27272a]",
-    secondary: "bg-background text-foreground border border-border hover:bg-secondary",
+    secondary: pressed
+      ? "bg-secondary text-foreground border border-[#d4d4d8] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)]"
+      : "bg-background text-foreground border border-border hover:bg-secondary",
     ghost: "text-foreground-secondary hover:bg-secondary",
   }[kind];
   return (
@@ -129,8 +134,9 @@ export function Button({
       aria-busy={loading || undefined}
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
+      aria-pressed={pressed}
       disabled={disabled}
-      className={`relative inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-button px-3 text-[14px] font-medium leading-5 whitespace-nowrap transition-[background-color,opacity] duration-150 disabled:opacity-50 ${cls} ${className}`}
+      className={`relative inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-button px-3 text-[14px] font-medium leading-5 whitespace-nowrap transition-[background-color,border-color,box-shadow,opacity] duration-150 disabled:opacity-50 ${cls} ${className}`}
     >
       <span className={`inline-flex items-center gap-1.5 transition-opacity duration-150 ${loading ? "opacity-0" : "opacity-100"}`}>{children}</span>
       {loading && (

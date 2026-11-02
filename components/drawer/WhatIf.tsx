@@ -19,11 +19,11 @@ import { Badge, Button, Icon } from "../ui";
 
 /* ─────────────────────────────────────────────────────────
  * What-if / UPS-2 ripple odds (1560:5036), one per likely cause.
- * Every cause row carries an odds block: UPS-2 failure odds now,
- * and after fixing that cause. Simulate opens the cause's own
- * simulator under it, on that cause's lever. Tap or drag a stop;
- * odds digits roll and the projection rotates about "Now" on the
- * Figma spring (m1 k520 d44).
+ * Every cause tile carries its odds: UPS-2 failure odds now, and
+ * after fixing that cause. Simulate opens the cause's simulator in
+ * the drawer's side panel, on that cause's lever. Tap or drag a
+ * stop; odds digits roll and the projection rotates about "Now" on
+ * the Figma spring (m1 k520 d44).
  * ───────────────────────────────────────────────────────── */
 
 const W = "/figma/whatif";
@@ -46,42 +46,43 @@ const RISK_TONE: Record<Confidence, "danger" | "warning" | "teal"> = { High: "da
 
 const LEVER_LABEL = { rack: "Move rack 14 load to PDU-02", ups: "Shift UPS-2 load to UPS-1" } as const;
 
-/* The odds block: same place in every cause row, so the after-fix
- * numbers line up down the list and read as a column. */
-export function OddsBlock({ id, cta }: { id: Cause["id"]; cta?: { label: string; onClick: () => void } }) {
-  const { state, actions } = usePrototype();
+/* "76% → 12% if rack 14’s load moves to PDU-02": the odds now, after
+ * fixing the cause, and the fix. lg is the tile; md is the follow-up. */
+export function OddsLine({ id, size = "md" }: { id: Cause["id"]; size?: "md" | "lg" }) {
   const { lever, preset, fix } = CAUSE_ODDS[id];
   const after = oddsAt(lever, preset);
-  const open = state.simOpen.includes(id);
+  const lg = size === "lg";
+  return (
+    <span className={`flex min-w-0 items-baseline ${lg ? "gap-2.5" : "gap-2"}`}>
+      <span className={`flex shrink-0 items-center gap-1.5 font-semibold tabular ${lg ? "text-[20px] leading-7 tracking-[-0.34px]" : "text-[16px] leading-6"}`}>
+        <span className="text-destructive">{ODDS_NOW}%</span>
+        <Icon src={`${W}/arrow-right.svg`} size={lg ? 16 : 14} />
+        <span className={RISK_TEXT_SMALL[riskFor(after)]}>{after}%</span>
+      </span>
+      <span className={`truncate text-muted-foreground ${lg ? "text-[14px] leading-5" : "text-[12px] leading-4"}`}>{fix}</span>
+    </span>
+  );
+}
+
+/* The odds as one row with an action, for the follow-up answer. */
+export function OddsBlock({ id, cta }: { id: Cause["id"]; cta: { label: string; onClick: () => void } }) {
   return (
     <div className="flex items-center gap-3 rounded-md border border-border bg-background py-2.5 pl-3 pr-2.5">
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-[12px] font-medium leading-4 text-muted-foreground">UPS-2 failure · next 6 h</span>
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="flex shrink-0 items-center gap-1 text-[16px] font-semibold leading-6 tabular">
-            <span className="text-destructive">{ODDS_NOW}%</span>
-            <Icon src={`${W}/arrow-right.svg`} size={14} />
-            <span className={RISK_TEXT_SMALL[riskFor(after)]}>{after}%</span>
-          </span>
-          <span className="truncate text-[12px] leading-4 text-muted-foreground">{fix}</span>
-        </span>
+        <OddsLine id={id} />
       </span>
-      {cta ? (
-        <Button kind="secondary" onClick={cta.onClick}>
-          {cta.label}
-        </Button>
-      ) : (
-        <Button kind="secondary" className="min-w-[84px]" ariaExpanded={open} onClick={() => actions.toggleSim(id)}>
-          {open ? "Hide" : "Simulate"}
-        </Button>
-      )}
+      <Button kind="secondary" onClick={cta.onClick}>
+        {cta.label}
+      </Button>
     </div>
   );
 }
 
-/* The cause's simulator. Opens on the cause's lever; the store
- * glides that lever to its recommended stop once the panel lands. */
-export function CauseSimulator({ id, open }: { id: Cause["id"]; open: boolean }) {
+/* The cause's simulator, in the side panel. Opens on the cause's
+ * lever; the store glides that lever to its recommended stop once
+ * the panel lands. */
+export function CauseSimulator({ id }: { id: Cause["id"] }) {
   const { state, actions } = usePrototype();
   const { lever, note } = CAUSE_ODDS[id];
   const stop = state.simStop[id];
@@ -91,13 +92,7 @@ export function CauseSimulator({ id, open }: { id: Cause["id"]; open: boolean })
   const changed = stop !== 0;
 
   return (
-    <motion.section
-      initial={false}
-      animate={{ opacity: open ? 1 : 0, y: open ? 0 : -4 }}
-      transition={{ duration: open ? 0.26 : 0.12, ease: EASE.reveal, delay: open ? 0.06 : 0 }}
-      className="flex flex-col gap-5 pb-5 pl-12 pr-4"
-      aria-label="Simulate the UPS-2 failure odds"
-    >
+    <section className="flex flex-col gap-6" aria-label="Simulate the UPS-2 failure odds">
       <div className="flex w-full items-stretch gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-border bg-background p-3">
           <span className="text-[12px] font-medium leading-4 text-muted-foreground">Now</span>
@@ -172,7 +167,7 @@ export function CauseSimulator({ id, open }: { id: Cause["id"]; open: boolean })
       ) : (
         <p className="text-pretty text-[14px] leading-5 text-muted-foreground">{note}</p>
       )}
-    </motion.section>
+    </section>
   );
 }
 

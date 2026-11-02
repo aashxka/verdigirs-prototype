@@ -94,18 +94,26 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Thin, quiet scrollbars inside the drawer */
+/* Thin, quiet scrollbars inside the drawer: invisible at rest, so
+ * they don't read as a divider, and shown while the pointer is over
+ * the area it scrolls. */
 .scroll-quiet {
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll-quiet:hover {
   scrollbar-color: var(--color-border) transparent;
 }
 .scroll-quiet::-webkit-scrollbar {
   width: 8px;
 }
 .scroll-quiet::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: transparent;
   border-radius: 8px;
   border: 2px solid white;
+}
+.scroll-quiet:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border);
 }
 
 /* ─────────────────────────────────────────────────────────

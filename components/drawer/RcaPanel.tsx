@@ -5,14 +5,15 @@ import { DATA_WINDOW, TRACE_META, TRACE_STEPS } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Collapse, Icon, Spinner } from "../ui";
-import { CauseList } from "./Causes";
-import { RecommendedSteps } from "./Steps";
+import { CauseTiles } from "./Causes";
 
-/* Root cause tab: live investigation trace → likely causes → steps. */
+/* Root cause tab: live investigation trace → three cause tiles. Their
+ * simulation and recommended actions open in the side panel. Once a
+ * cause is confirmed it heads the list as the likely root cause. */
 export function RcaPanel() {
   const { state } = usePrototype();
   const tracing = !state.traceFolded;
-  const confirmed = state.feedback === "confirmed";
+  const rooted = state.root !== null;
   return (
     <div className="flex w-full flex-col">
       <Collapse open={tracing} inMs={300} outMs={260}>
@@ -29,16 +30,17 @@ export function RcaPanel() {
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="flex flex-1 text-[16px] font-semibold leading-6 text-foreground">
-            <AnimatePresence mode="popLayout" initial={false}>
+          <h3 className="grid flex-1 text-[16px] font-semibold leading-6 text-foreground">
+            <AnimatePresence initial={false}>
               <motion.span
-                key={confirmed ? "root" : "likely"}
+                key={rooted ? "root" : "likely"}
                 initial={{ opacity: 0, filter: "blur(3px)" }}
                 animate={{ opacity: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, filter: "blur(3px)" }}
-                transition={{ duration: 0.2, ease: EASE.snap }}
+                exit={{ opacity: 0, filter: "blur(3px)", transition: { duration: 0.12 } }}
+                transition={{ duration: 0.24, ease: EASE.snap }}
+                className="[grid-area:1/1]"
               >
-                {confirmed ? "Root cause" : "Likely causes"}
+                {rooted ? "Likely root cause" : "Likely causes"}
               </motion.span>
             </AnimatePresence>
           </h3>
@@ -55,22 +57,7 @@ export function RcaPanel() {
             )}
           </AnimatePresence>
         </div>
-        <CauseList />
-
-        <AnimatePresence>
-          {state.stepsShown && (
-            <motion.div
-              key="steps"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DUR.reveal, ease: EASE.reveal }}
-              className="flex flex-col gap-3 pt-5"
-            >
-              <h3 className="text-[16px] font-semibold leading-6 text-foreground">Recommended steps</h3>
-              <RecommendedSteps />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <CauseTiles />
       </div>
     </div>
   );
