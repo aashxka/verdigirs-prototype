@@ -312,8 +312,10 @@ export const SCHEDULE_DIALOG: Record<string, { subtitle: string; instructions: s
   },
 };
 
-/* Follow-up (05 · Ask a follow-up) */
-export const QUESTION = "Why is UPS-2 capacitor wear only Medium? Any related causes?";
+/* Follow-up (05 · Ask a follow-up), asked by pointing: the user
+ * points at this cause's summary and presses Ask, and the line goes
+ * to chat as a quote. The answer below is scripted for it. */
+export const ASK_CAUSE: Cause["id"] = 2;
 
 export const SEARCH_STEPS = [
   { label: "Read the evidence for UPS-2 capacitor wear", time: "0.6s" },
@@ -324,8 +326,9 @@ export const SEARCH_STEPS = [
 export const SEARCH_SUMMARY = "Checked 14 past incidents and the UPS-2 waveform";
 
 export const ANSWER = {
-  leadTitle: "Capacitor wear doesn’t explain the 12:30 spike",
-  leadBody: "Rack 14 powering on does. UPS-2 ripple is only 6%; failures start at 15%.",
+  leadTitle: "Rack 14 caused the spike, not the wear",
+  leadBody:
+    "Distortion jumped within 8 minutes of Rack 14 powering on at 12:22, and ripple started climbing with it. Worn capacitors leave UPS-2 fragile, but they couldn’t trip this alert alone.",
   relatedTitle: "Rack 14’s harmonics are speeding up the wear",
   related: [
     { rank: 1 as const, cause: "Non-linear load switching", linked: true, note: "Its harmonics heat UPS-2’s capacitors.", source: "PDU-01-A9F sensor" },

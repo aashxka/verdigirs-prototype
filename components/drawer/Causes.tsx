@@ -2,10 +2,11 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useLayoutEffect, useRef } from "react";
-import { CAUSES, CAUSE_ODDS, POWER_ON, causeById, type Cause, type CauseChart } from "@/lib/data";
+import { ASK_CAUSE, CAUSES, CAUSE_ODDS, POWER_ON, causeById, type Cause, type CauseChart } from "@/lib/data";
 import { DUR, EASE, TWEEN } from "@/lib/motion";
 import { isRoot, usePrototype } from "@/lib/store";
 import { Badge, Button, Collapse, ConfidenceLabel, Icon } from "../ui";
+import { AskLine } from "./AskLine";
 import { OddsFigures } from "./WhatIf";
 
 const C = "/figma/cause";
@@ -192,7 +193,10 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
             divider, 16 below that. Padding is 24 to match the card's, so
             the nested card never out-pads its tile. */}
         <div className="flex flex-col px-6 pb-6">
-          <p className="type-body text-pretty text-foreground-tertiary">{cause.summary}</p>
+          {/* The scripted follow-up is asked by pointing at this line. */}
+          <p className="type-body text-pretty text-foreground-tertiary">
+            {cause.id === ASK_CAUSE ? <AskLine text={cause.summary} /> : cause.summary}
+          </p>
 
           {/* DS Card (design.verdigris.co/categories/web-components/cards):
               the odds are the title, the risk and its fix one description

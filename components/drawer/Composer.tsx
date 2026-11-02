@@ -2,7 +2,7 @@
 
 import { BorderBeam } from "border-beam";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { HANDOFF, LOG, QUESTION, RELATED } from "@/lib/data";
+import { HANDOFF, LOG, RELATED } from "@/lib/data";
 import { DUR, EASE } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Icon, SearchLoader } from "../ui";
@@ -44,8 +44,9 @@ const BEAM_CSS = `
 }
 `;
 
-/* Chat composer (1363:9234): Disabled → Default → Typing → Searching.
- * Clicking auto-types the scripted question; Enter or Send asks it. */
+/* Chat composer (1363:9234): Disabled → Default → Asking → Searching.
+ * Nothing is typed here: a line pointed at and asked about (AskLine)
+ * lands as a quote chip and sends itself; Enter or Send sends it now. */
 export function Composer() {
   const { state, actions } = usePrototype();
   const reduce = useReducedMotion();
@@ -53,9 +54,8 @@ export function Composer() {
   // The scripted question belongs to Root cause; on other tabs the composer rests.
   const chat = state.tab === "rca" ? state.chat : "idle";
   const disabled = analysis !== "done";
-  const typing = chat === "typing" || chat === "ready";
+  const asking = chat === "asking";
   const searching = chat === "searching" || chat === "answering";
-  const canSend = typing && state.typed > 0;
 
   const placeholder =
     state.tab === "handoff"
@@ -87,29 +87,30 @@ export function Composer() {
         aria-disabled={disabled || undefined}
         aria-label="Ask Signals Assistant"
         tabIndex={disabled ? -1 : 0}
-        onClick={() => !disabled && actions.focusComposer()}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" && asking) {
             e.preventDefault();
-            if (canSend) actions.send();
-            else actions.focusComposer();
+            actions.send();
           }
         }}
         className={`flex h-11 w-full items-center gap-2 rounded-md border pl-3.5 pr-1.5 transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-standard)] focus-visible:outline-none ${
           disabled
             ? "cursor-not-allowed border-border bg-surface-subtle"
-            : typing
+            : asking
               ? "cursor-text border-verdigris-on-light bg-background shadow-[0_0_0_2px_var(--ring-focus),var(--shadow-xs)]"
               : "cursor-text border-border bg-background shadow-xs hover:border-[#d4d4d8] focus-visible:border-verdigris-on-light"
         }`}
       >
-        {/* Placeholder, typed question and search status share one cell and crossfade. */}
+        {/* Placeholder, the quoted line and search status share one cell and crossfade. */}
         <span className="grid h-6 min-w-0 flex-1 items-center overflow-hidden text-[14px] leading-5">
           <AnimatePresence initial={false}>
-            {typing ? (
-              <motion.span key="typing" {...swap} className="truncate text-foreground [grid-area:1/1]">
-                {QUESTION.slice(0, state.typed)}
-                <span className="caret ml-px inline-block h-4 w-px translate-y-[3px] bg-foreground" aria-hidden />
+            {asking && state.quote ? (
+              <motion.span key="quote" {...swap} className="flex min-w-0 [grid-area:1/1]">
+                {/* Same chip as a source: secondary fill, r6, 12px icon. */}
+                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-[6px] bg-secondary py-0.5 pl-1.5 pr-2 text-[13px] leading-5 text-foreground-secondary">
+                  <QuoteIcon />
+                  <span className="truncate">{state.quote}</span>
+                </span>
               </motion.span>
             ) : searching ? (
               <motion.span key="searching" {...swap} className="flex items-center gap-2 text-muted-foreground [grid-area:1/1]">
@@ -123,9 +124,21 @@ export function Composer() {
             )}
           </AnimatePresence>
         </span>
-        <SendButton mode={searching ? "stop" : canSend ? "send" : "idle"} onSend={actions.send} onStop={actions.stop} />
+        <SendButton mode={searching ? "stop" : asking ? "send" : "idle"} onSend={actions.send} onStop={actions.stop} />
       </div>
     </BorderBeam>
+  );
+}
+
+/* Lucide text-quote, 12px, at the drawer icons' 1.33px stroke. */
+function QuoteIcon() {
+  return (
+    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={(1.33 * 24) / 12} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground" aria-hidden>
+      <path d="M17 5H3" />
+      <path d="M21 12H8" />
+      <path d="M21 19H8" />
+      <path d="M3 12v7" />
+    </svg>
   );
 }
 

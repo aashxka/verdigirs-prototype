@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ANSWER, QUESTION, SEARCH_STEPS, SEARCH_SUMMARY } from "@/lib/data";
+import { ANSWER, SEARCH_STEPS, SEARCH_SUMMARY } from "@/lib/data";
 import { DUR, EASE, resolveIn } from "@/lib/motion";
 import { usePrototype } from "@/lib/store";
 import { Badge, Icon, SearchLoader, SourceChip } from "../ui";
@@ -29,7 +29,12 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
         transition={{ duration: DUR.moderate, ease: EASE.reveal }}
         style={{ transformOrigin: "right bottom" }}
       >
-        <p className="type-body rounded-[14px] rounded-br-[4px] bg-secondary px-3.5 py-2.5 text-foreground">{QUESTION}</p>
+        {/* The question is the line the user pointed at, sent as a quote.
+            Its rule takes the verdigris of the line's tint, so it reads
+            as the same line. */}
+        <blockquote className="type-body max-w-[80%] rounded-[14px] rounded-br-[4px] bg-secondary px-3.5 py-2.5" aria-label="You asked about">
+          <p className="text-pretty border-l-2 border-verdigris pl-3 text-foreground-secondary">{state.quote}</p>
+        </blockquote>
       </motion.div>
 
       <div className="flex w-full flex-col gap-8" aria-live="polite">

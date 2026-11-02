@@ -7,7 +7,6 @@ import {
   CAUSES,
   causeById,
   CONFIRMED_ONLY,
-  QUESTION,
   RECIPIENTS,
   SEARCH_STEPS,
   TRACE_STEPS,
@@ -38,7 +37,7 @@ export type Side = { cause: Cause["id"]; boxes: SideView[] };
 const BOX_ORDER: SideView[] = ["simulate", "actions"];
 export type Toast = { id: number; text: string; description?: string; undo?: Undo };
 type ToastInput = Omit<Toast, "id">;
-export type ChatPhase = "idle" | "typing" | "ready" | "searching" | "answering" | "done";
+export type ChatPhase = "idle" | "asking" | "searching" | "answering" | "done";
 export type Tab = "rca" | "related" | "log" | "handoff";
 export type HandoffPhase = "pick" | "writing" | "ready" | "sending" | "sent";
 /* null = person not picked; [] = picked, no channel yet. */
@@ -73,7 +72,8 @@ export type State = {
   dialog: { stepKey: string; submitting: boolean } | null;
   toast: Toast | null;
   chat: ChatPhase;
-  typed: number;
+  /* The line the user pointed at and asked about; it is the question. */
+  quote: string | null;
   searchDone: number;
   searchFolded: boolean;
   answerShown: number;
@@ -112,7 +112,7 @@ const initial: State = {
   dialog: null,
   toast: null,
   chat: "idle",
-  typed: 0,
+  quote: null,
   searchDone: 0,
   searchFolded: false,
   answerShown: 0,
@@ -168,16 +168,6 @@ function reducer(state: State, action: Action): State {
         log: state.log.filter((e) => !(action.keys.includes(e.key) && (action.cause === undefined || e.cause === action.cause))),
       };
   }
-}
-
-/* Natural typing cadence: a beat after spaces, longer after
- * punctuation, and a little deterministic unevenness. */
-function typingDelay(char: string, i: number) {
-  const jitter = ((i * 37) % 17) - 6;
-  if (char === "?" || char === ".") return TIMING.typeChar + 220 + jitter;
-  if (char === ",") return TIMING.typeChar + 110 + jitter;
-  if (char === " ") return TIMING.typeChar + 22 + jitter;
-  return TIMING.typeChar + jitter;
 }
 
 function useTimers() {
@@ -463,25 +453,21 @@ function useController() {
           after("handoff", 180, () => toast({ text: `Handoff sent to ${names.join(" and ")}`, description: "Added to the Log" }));
         });
       },
-      focusComposer() {
+      /* Point and ask: the pointed line lands in the composer as a
+       * quote, then sends itself a beat later. Nobody types or
+       * presses Send (Send or Enter just sends it sooner). */
+      ask(quote: string) {
         const s = ref.current;
         if (s.tab !== "rca" || s.analysis !== "done" || s.chat !== "idle" || s.asked) return;
-        patch({ chat: "typing", typed: 0 });
         clear("chat");
-        let at = 140;
-        for (let i = 0; i < QUESTION.length; i++) {
-          at += typingDelay(QUESTION[i], i);
-          const n = i + 1;
-          after("chat", at, () => patch({ typed: n }));
-        }
-        after("chat", at + 40, () => patch({ chat: "ready" }));
+        patch({ chat: "asking", quote });
+        after("chat", TIMING.askSends, () => actions.send());
       },
       send() {
         const s = ref.current;
-        if (s.tab !== "rca") return;
-        if (s.chat !== "ready" && s.chat !== "typing") return;
+        if (s.tab !== "rca" || s.chat !== "asking") return;
         clear("chat");
-        patch({ chat: "searching", typed: QUESTION.length, asked: true, searchDone: 0, searchFolded: false, answerShown: 0 });
+        patch({ chat: "searching", asked: true, searchDone: 0, searchFolded: false, answerShown: 0 });
         SEARCH_STEPS.forEach((_, i) => after("chat", TIMING.searchStep[i], () => patch({ searchDone: i + 1 })));
         after("chat", TIMING.searchFolds, () => patch({ searchFolded: true, chat: "answering" }));
         const blocks = 4;
@@ -493,7 +479,7 @@ function useController() {
       },
       stop() {
         clear("chat");
-        patch({ chat: "idle", typed: 0, asked: false, searchDone: 0, searchFolded: false, answerShown: 0 });
+        patch({ chat: "idle", quote: null, asked: false, searchDone: 0, searchFolded: false, answerShown: 0 });
       },
       setSimStop(id: Cause["id"], stop: number) {
         clear("sim");

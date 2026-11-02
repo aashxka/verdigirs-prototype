@@ -39,8 +39,16 @@
  * NO (rule a tile out)
  *     0   the tile folds to its headline (300ms) beside Undo
  *
- * FOLLOW-UP QUESTION (ms after Send)
- *     0   question bubble lands; composer reads "Searching…" beside
+ * POINT AND ASK (cause 2's summary)
+ *     0   pointer rests on the line: it tints (150ms)
+ *   300   DS tooltip delay: "Ask" rises above the line (200ms, fade,
+ *         zoom from 95%, 8px up) and follows the pointer along it
+ *  Ask    tooltip leaves (150ms); the line stays tinted and lands in
+ *         the composer as a quote chip, Send turns green
+ *  +700   it sends itself (Send or Enter sends it sooner)
+ *
+ * FOLLOW-UP QUESTION (ms after it sends)
+ *     0   quote bubble lands; composer reads "Searching…" beside
  *         the matrix loader, Send turns into Stop
  *   300   search steps tick off (matrix loader while active)
  *  3200   steps fold into one summary line
@@ -107,7 +115,8 @@ export const TIMING = {
   simPrimeOpening: 560, // same, while the side panel is still widening
   toastLife: 4000, // Sonner default, per the DS toast page
   actionSpinner: 520,
-  typeChar: 26, // base ms per character when auto-typing
+  askTooltip: 300, // DS TooltipProvider delayDuration
+  askSends: 700, // Ask → the quoted line sends itself
   searchStep: [600, 2000, 2900], // each search step finishes (after Send)
   searchFolds: 3150,
   answerStarts: 3350,
