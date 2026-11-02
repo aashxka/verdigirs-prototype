@@ -1,7 +1,6 @@
 "use client";
 
-import { BorderBeam } from "border-beam";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useId, useLayoutEffect, useRef } from "react";
 import { ASK_CAUSE, CAUSES, CAUSE_ODDS, POWER_ON, causeById, type Cause, type CauseChart } from "@/lib/data";
 import { DUR, EASE, TWEEN } from "@/lib/motion";
@@ -105,53 +104,8 @@ function CauseSlot({ cause, i, rank }: { cause: Cause; i: number; rank: number }
   );
 }
 
-/* Border Beam (libraries.dev/beam) circles the active card in the
- * accent alone. The md preset paints its glow inside the card; here
- * the glow sits outside it, behind the card's white face, so only the
- * halo past the edge shows. The stroke is one verdigris spot riding
- * the 1px border. The bloom layer isn't needed. */
-const accent = (pct: number) => `color-mix(in oklab, var(--color-verdigris) ${pct}%, transparent)`;
-const CARD_BEAM_CSS = `
-[data-beam="{id}"] {
-  overflow: visible;
-  isolation: isolate;
-}
-[data-beam="{id}"][data-active]::after,
-[data-beam="{id}"][data-fading]::after {
-  background: conic-gradient(
-    from var(--beam-angle-{id}),
-    transparent 0%, transparent 56%,
-    ${accent(50)} 63%, var(--color-verdigris) 68%, ${accent(50)} 73%,
-    transparent 80%, transparent 100%
-  );
-  opacity: var(--beam-opacity-{id});
-}
-[data-beam="{id}"][data-active]::before,
-[data-beam="{id}"][data-fading]::before {
-  inset: -8px;
-  border-radius: calc(var(--radius-lg) + 8px);
-  background: conic-gradient(
-    from var(--beam-angle-{id}),
-    transparent 0%, transparent 58%,
-    ${accent(70)} 68%,
-    transparent 78%, transparent 100%
-  );
-  box-shadow: none;
-  -webkit-mask: none;
-  mask: none;
-  clip-path: none;
-  filter: blur(10px);
-  z-index: -1;
-  opacity: var(--beam-opacity-{id});
-}
-[data-beam="{id}"] [data-beam-bloom] {
-  display: none !important;
-}
-`;
-
 function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
   const { state, actions } = usePrototype();
-  const reduce = useReducedMotion();
   const ruledOut = state.ruledOut.includes(cause.id);
   const root = isRoot(state, cause.id);
   // The ring follows whatever the side panel shows for this tile: its
@@ -170,116 +124,114 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
   };
 
   return (
-    <BorderBeam size="md" theme="light" staticColors duration={3} active={active && !reduce} css={CARD_BEAM_CSS}>
-      <article
-        id={`cause-${cause.id}`}
-        aria-label={cause.headline}
-        onClick={onTileClick}
-        className={`cursor-pointer overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
-          active
-            ? // A soft verdigris glow outside a light accent edge, not a
-              // solid bar; the beam's verdigris spot travels that edge.
-              "border-accent-border bg-background shadow-accent-glow"
-            : ruledOut
-              ? "border-border bg-surface-subtle hover:border-[#d4d4d8]"
-              : "border-border bg-background shadow-xs hover:border-[#d4d4d8]"
-        }`}
-      >
-        <header className={`flex items-start gap-3 px-6 transition-[padding] duration-300 ease-[var(--ease-reveal)] ${ruledOut ? "py-4" : "pb-2 pt-6"}`}>
-          <span className="flex h-7 shrink-0 items-center">
-            <RankBadge n={rank} root={root} />
-          </span>
-          <h3
-            className={`type-section min-w-0 flex-1 text-pretty transition-colors duration-200 ${
-              ruledOut ? "text-muted-foreground" : "text-foreground"
-            }`}
-          >
-            {cause.headline}
-          </h3>
-          <span className="relative flex h-7 shrink-0 items-center">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {ruledOut ? (
-                <motion.span key="ruled" {...swap} className="flex items-center gap-3 text-[14px] leading-5">
-                  <span className="text-muted-foreground">Ruled out</span>
-                  <button
-                    type="button"
-                    onClick={() => actions.restoreCause(cause.id)}
-                    className="font-medium text-verdigris-on-light underline-offset-4 hover:underline"
-                  >
-                    Undo
-                  </button>
-                </motion.span>
-              ) : root ? (
-                <motion.span
-                  key="root"
-                  className="flex"
-                  initial={{ opacity: 0, scale: 0.92 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96, transition: { duration: DUR.fast } }}
-                  transition={{ ...TWEEN.pop, delay: 0.06 }}
-                  style={{ transformOrigin: "right center" }}
+    <article
+      id={`cause-${cause.id}`}
+      aria-label={cause.headline}
+      onClick={onTileClick}
+      className={`cursor-pointer overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
+        active
+          ? // A soft, still verdigris glow outside a light accent edge,
+            // not a solid bar.
+            "border-accent-border bg-background shadow-accent-glow"
+          : ruledOut
+            ? "border-border bg-surface-subtle hover:border-[#d4d4d8]"
+            : "border-border bg-background shadow-xs hover:border-[#d4d4d8]"
+      }`}
+    >
+      <header className={`flex items-start gap-3 px-6 transition-[padding] duration-300 ease-[var(--ease-reveal)] ${ruledOut ? "py-4" : "pb-2 pt-6"}`}>
+        <span className="flex h-7 shrink-0 items-center">
+          <RankBadge n={rank} root={root} />
+        </span>
+        <h3
+          className={`type-section min-w-0 flex-1 text-pretty transition-colors duration-200 ${
+            ruledOut ? "text-muted-foreground" : "text-foreground"
+          }`}
+        >
+          {cause.headline}
+        </h3>
+        <span className="relative flex h-7 shrink-0 items-center">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {ruledOut ? (
+              <motion.span key="ruled" {...swap} className="flex items-center gap-3 text-[14px] leading-5">
+                <span className="text-muted-foreground">Ruled out</span>
+                <button
+                  type="button"
+                  onClick={() => actions.restoreCause(cause.id)}
+                  className="font-medium text-verdigris-on-light underline-offset-4 hover:underline"
                 >
-                  <Badge tone="teal">Root cause</Badge>
-                </motion.span>
-              ) : (
-                <motion.span key="confidence" {...swap} className="flex">
-                  <ConfidenceLabel level={cause.confidence} label={cause.confidence === "High" ? "Most likely" : undefined} />
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </span>
-        </header>
+                  Undo
+                </button>
+              </motion.span>
+            ) : root ? (
+              <motion.span
+                key="root"
+                className="flex"
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96, transition: { duration: DUR.fast } }}
+                transition={{ ...TWEEN.pop, delay: 0.06 }}
+                style={{ transformOrigin: "right center" }}
+              >
+                <Badge tone="teal">Root cause</Badge>
+              </motion.span>
+            ) : (
+              <motion.span key="confidence" {...swap} className="flex">
+                <ConfidenceLabel level={cause.confidence} label={cause.confidence === "High" ? "Most likely" : undefined} />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
+      </header>
 
-        <Collapse open={!ruledOut} inMs={300} outMs={240}>
-          {/* Spacing on the product-ui scale, tight inside a group and
-              generous between them: headline → summary 8 (compact), 24
-              (panel) to the evidence card and from it down to the verdict's
-              divider, 16 below that. Padding is 24 to match the card's, so
-              the nested card never out-pads its tile. */}
-          <div className="flex flex-col px-6 pb-6">
-            {/* The scripted follow-up is asked by pointing at this line. */}
-            <p className="type-body text-pretty text-foreground-tertiary">
-              {cause.id === ASK_CAUSE ? <AskLine text={cause.summary} /> : cause.summary}
-            </p>
+      <Collapse open={!ruledOut} inMs={300} outMs={240}>
+        {/* Spacing on the product-ui scale, tight inside a group and
+            generous between them: headline → summary 8 (compact), 24
+            (panel) to the evidence card and from it down to the verdict's
+            divider, 16 below that. Padding is 24 to match the card's, so
+            the nested card never out-pads its tile. */}
+        <div className="flex flex-col px-6 pb-6">
+          {/* The scripted follow-up is asked by pointing at this line. */}
+          <p className="type-body text-pretty text-foreground-tertiary">
+            {cause.id === ASK_CAUSE ? <AskLine text={cause.summary} /> : cause.summary}
+          </p>
 
-            {/* DS Card (design.verdigris.co/categories/web-components/cards):
-                the odds are the title, the risk and its fix one description
-                line, the cause's chart the content, and the side-panel
-                buttons the footer. The chart is the evidence for both the
-                odds above it and the Simulate below it, so it lives between
-                them; sections sit 32 apart (section token) so each reads on
-                its own inside the card. */}
-            <section
-              data-slot="card"
-              aria-label="UPS-2 failure risk"
-              className="mt-6 flex flex-col gap-8 rounded-xl border border-border bg-card py-6 text-foreground"
-            >
-              <div data-slot="card-header" className="grid gap-2 px-6">
-                <div data-slot="card-title" className="font-semibold leading-none">
-                  <OddsFigures id={cause.id} size="lg" />
-                </div>
-                <p data-slot="card-description" className="truncate text-sm text-muted-foreground" title={CAUSE_ODDS[cause.id].line}>
-                  {CAUSE_ODDS[cause.id].line}
-                </p>
+          {/* DS Card (design.verdigris.co/categories/web-components/cards):
+              the odds are the title, the risk and its fix one description
+              line, the cause's chart the content, and the side-panel
+              buttons the footer. The chart is the evidence for both the
+              odds above it and the Simulate below it, so it lives between
+              them; sections sit 32 apart (section token) so each reads on
+              its own inside the card. */}
+          <section
+            data-slot="card"
+            aria-label="UPS-2 failure risk"
+            className="mt-6 flex flex-col gap-8 rounded-xl border border-border bg-card py-6 text-foreground"
+          >
+            <div data-slot="card-header" className="grid gap-2 px-6">
+              <div data-slot="card-title" className="font-semibold leading-none">
+                <OddsFigures id={cause.id} size="lg" />
               </div>
-              <div data-slot="card-content" className="px-6">
-                <TileChart chart={cause.chart} />
-              </div>
-              <div data-slot="card-footer" className="flex items-center gap-2 px-6">
-                <Button pressed={boxes.includes("simulate")} onClick={() => actions.openSide(cause.id, "simulate")}>
-                  Simulate
-                </Button>
-                <Button pressed={boxes.includes("actions")} onClick={() => actions.openSide(cause.id, "actions")}>
-                  Recommend actions
-                </Button>
-              </div>
-            </section>
+              <p data-slot="card-description" className="truncate text-sm text-muted-foreground" title={CAUSE_ODDS[cause.id].line}>
+                {CAUSE_ODDS[cause.id].line}
+              </p>
+            </div>
+            <div data-slot="card-content" className="px-6">
+              <TileChart chart={cause.chart} />
+            </div>
+            <div data-slot="card-footer" className="flex items-center gap-2 px-6">
+              <Button pressed={boxes.includes("simulate")} onClick={() => actions.openSide(cause.id, "simulate")}>
+                Simulate
+              </Button>
+              <Button pressed={boxes.includes("actions")} onClick={() => actions.openSide(cause.id, "actions")}>
+                Recommend actions
+              </Button>
+            </div>
+          </section>
 
-            <Verdict id={cause.id} />
-          </div>
-        </Collapse>
-      </article>
-    </BorderBeam>
+          <Verdict id={cause.id} />
+        </div>
+      </Collapse>
+    </article>
   );
 }
 
