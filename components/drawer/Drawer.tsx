@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import type { Cause } from "@/lib/data";
 import { DUR, EASE, SPRING } from "@/lib/motion";
 import { usePrototype, type Tab } from "@/lib/store";
 import { Icon, PanelIcon } from "../ui";
@@ -71,6 +72,10 @@ export function AssistantDrawer() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [state.tab]);
+
+  // The card the side panel belongs to (its boxes, or its Thinking) stays in view.
+  const panelCard = open && state.tab === "rca" ? (state.thinking ? state.thinkingFor : (state.side?.cause ?? null)) : null;
+  useCardInView(scrollRef, panelCard, actions.closeSide, !!reduce);
 
   return (
     <motion.aside
@@ -204,6 +209,58 @@ export function AssistantDrawer() {
       </div>
     </motion.aside>
   );
+}
+
+/* While the side panel shows a card's details, the whole card is in
+ * view: opening scrolls it fully in (16px clear of the edges), and
+ * once the user scrolls it more than half out of view the panel
+ * collapses. The scroll-in is ignored until it settles. Positions are
+ * measured in the scroller's layout px, so this holds inside the
+ * scaled stage. */
+const AWAY = 0.5;
+
+function useCardInView(scroller: RefObject<HTMLDivElement | null>, id: Cause["id"] | null, onAway: () => void, reduce: boolean) {
+  useEffect(() => {
+    const sc = scroller.current;
+    const card = id ? document.getElementById(`cause-${id}`) : null;
+    if (!sc || !card) return;
+    const place = () => {
+      const sr = sc.getBoundingClientRect();
+      const cr = card.getBoundingClientRect();
+      const s = sr.height / sc.offsetHeight || 1;
+      return { top: (cr.top - sr.top) / s, bottom: (cr.bottom - sr.top) / s, h: cr.height / s };
+    };
+
+    let settling = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settle = () => {
+      settling = false;
+      clearTimeout(timer);
+    };
+    const pad = 16;
+    const r = place();
+    const view = sc.clientHeight;
+    const delta = r.top < pad ? r.top - pad : r.bottom > view - pad ? Math.min(r.bottom - (view - pad), r.top - pad) : 0;
+    if (delta) {
+      settling = true;
+      sc.addEventListener("scrollend", settle, { once: true });
+      timer = setTimeout(settle, 900);
+      sc.scrollBy({ top: delta, behavior: reduce ? "auto" : "smooth" });
+    }
+
+    const onScroll = () => {
+      if (settling) return;
+      const p = place();
+      const seen = Math.max(0, Math.min(p.bottom, sc.clientHeight) - Math.max(p.top, 0));
+      if (seen < p.h * AWAY) onAway();
+    };
+    sc.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      sc.removeEventListener("scroll", onScroll);
+      sc.removeEventListener("scrollend", settle);
+      clearTimeout(timer);
+    };
+  }, [scroller, id, onAway, reduce]);
 }
 
 /* Collapsed assistant while the user follows evidence into Signals. */

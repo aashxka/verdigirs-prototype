@@ -45,9 +45,6 @@ export function SidePanel({ shown }: { shown: boolean }) {
   }, [key]);
 
   const cause = held ? causeById(held.cause) : null;
-  // The card whose details the panel shows: its boxes, or its Thinking
-  // when a click on it opened Thinking.
-  const named = thinking ? (state.thinkingFor ? causeById(state.thinkingFor) : null) : cause;
   const hasSim = !!held?.boxes.includes("simulate");
   const hasActions = !!held?.boxes.includes("actions");
 
@@ -70,26 +67,8 @@ export function SidePanel({ shown }: { shown: boolean }) {
       className="flex h-full shrink-0 flex-col bg-background"
       style={{ width: SIDE_W }}
     >
-      {/* Header: the card it's showing, set like the tab labels beside
-          it (14 medium, foreground) at the content's 24px inset, then
-          the panel's one close button. */}
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-3">
-        <span className="grid min-w-0 flex-1 pl-3">
-          <AnimatePresence initial={false}>
-            {named && (
-              <motion.span
-                key={named.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transition: { duration: DUR.fast } }}
-                transition={{ duration: DUR.normal, ease: EASE.reveal }}
-                className="truncate text-[14px] font-medium leading-5 text-foreground [grid-area:1/1]"
-              >
-                {named.headline}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </span>
+      {/* Header: the panel's one close button, on the tab bar's row. */}
+      <div className="flex h-12 shrink-0 items-center justify-end border-b border-border px-3">
         <motion.button
           type="button"
           onClick={actions.closeSide}
@@ -102,7 +81,8 @@ export function SidePanel({ shown }: { shown: boolean }) {
         </motion.button>
       </div>
 
-      <div ref={scrollRef} className="scroll-quiet relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+      {/* Content on verdigris 100, so the white boxes and Thinking cards sit on a light tint. */}
+      <div ref={scrollRef} className="scroll-quiet relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-verdigris-100">
         <AnimatePresence mode="popLayout" initial={false}>
           {thinking && (
             <motion.div

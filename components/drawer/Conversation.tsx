@@ -15,7 +15,7 @@ export function Conversation({ bubbleRef }: { bubbleRef: React.Ref<HTMLDivElemen
   if (!state.asked) return null;
   const shown = state.answerShown;
 
-  // The simulator lives in the side panel, beside the conversation.
+  // Opens rack 14's simulator in the side panel; the drawer brings its card into view.
   const simulateRoot = () => {
     actions.openSide(1, "simulate", "show");
   };

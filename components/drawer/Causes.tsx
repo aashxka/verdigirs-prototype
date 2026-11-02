@@ -129,7 +129,10 @@ function CauseTile({ cause, rank }: { cause: Cause; rank?: number }) {
       onClick={onTileClick}
       className={`cursor-pointer overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
         active
-          ? "border-accent-border bg-background shadow-[0_0_0_3px_var(--color-accent-subtle),var(--shadow-xs)]"
+          ? // DS "Card with Accent Bar" (categories/web-components/cards): a
+            // 3px brand-teal top edge, drawn as the 1px top border plus a 2px
+            // inset so the card never shifts.
+            "border-border border-t-verdigris bg-background shadow-[inset_0_2px_0_0_var(--color-verdigris),var(--shadow-xs)]"
           : ruledOut
             ? "border-border bg-surface-subtle hover:border-[#d4d4d8]"
             : "border-border bg-background shadow-xs hover:border-[#d4d4d8]"
