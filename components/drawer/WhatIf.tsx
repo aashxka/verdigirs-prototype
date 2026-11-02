@@ -53,7 +53,7 @@ export function OddsFigures({ id, size = "md" }: { id: Cause["id"]; size?: "md" 
   const after = oddsAt(lever, preset);
   const lg = size === "lg";
   return (
-    <span className={`flex shrink-0 items-center gap-1.5 font-semibold tabular ${lg ? "text-[20px] leading-none" : "text-[16px] leading-6"}`}>
+    <span className={`flex shrink-0 items-center gap-1.5 font-semibold ${lg ? "text-[20px] leading-none" : "text-[16px] leading-6"}`}>
       <span className="text-destructive">{ODDS_NOW}%</span>
       <Icon src={`${W}/arrow-right.svg`} size={lg ? 16 : 14} />
       <span className={RISK_TEXT_SMALL[riskFor(after)]}>{after}%</span>
@@ -104,7 +104,7 @@ export function CauseSimulator({ id }: { id: Cause["id"] }) {
         <div className="flex min-w-0 flex-1 flex-col gap-1 rounded-md border border-border bg-background p-3">
           <span className="type-label text-muted-foreground">Now</span>
           <span className="flex items-center justify-between">
-            <span className="text-[32px] font-semibold leading-9 text-pastel-red tabular">{ODDS_NOW}%</span>
+            <span className="text-[32px] font-semibold leading-9 text-pastel-red">{ODDS_NOW}%</span>
             <Badge tone="danger">High</Badge>
           </span>
         </div>
@@ -195,35 +195,39 @@ function RiskChip({ level }: { level: Confidence }) {
   );
 }
 
-/* Odometer digits: each column springs to its digit. */
+/* Odometer digits: each column springs to its digit, and to that
+ * digit's own width, so "12%" sets like the static "76%" beside it
+ * rather than in fixed-width cells. */
 function RollingNumber({ value }: { value: number }) {
   const tens = Math.floor(value / 10);
   const ones = value % 10;
   return (
-    <span className="relative inline-flex tabular" aria-label={`${value}`}>
+    <span className="relative inline-flex" aria-label={`${value}`}>
       <motion.span
         className="relative inline-flex overflow-hidden"
         initial={false}
-        animate={{ width: tens > 0 ? "0.62em" : "0em", opacity: tens > 0 ? 1 : 0 }}
+        animate={{ width: tens > 0 ? `${DIGIT_EM[tens]}em` : "0em", opacity: tens > 0 ? 1 : 0 }}
         transition={SPRING.whatIf}
       >
         <DigitColumn digit={tens} />
       </motion.span>
-      <span className="relative inline-flex w-[0.62em] overflow-hidden">
+      <motion.span className="relative inline-flex overflow-hidden" initial={false} animate={{ width: `${DIGIT_EM[ones]}em` }} transition={SPRING.whatIf}>
         <DigitColumn digit={ones} />
-      </span>
+      </motion.span>
     </span>
   );
 }
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+// Inter 600's proportional digit advances, in em (measured in the browser).
+const DIGIT_EM = [0.6, 0.385, 0.566, 0.578, 0.606, 0.557, 0.582, 0.524, 0.582, 0.582];
 
 function DigitColumn({ digit }: { digit: number }) {
   return (
     <span className="relative block h-9 w-[0.62em]" aria-hidden>
       <motion.span className="absolute left-0 top-0 flex flex-col" initial={false} animate={{ y: `${-digit * 2.25}rem` }} transition={SPRING.whatIf}>
         {DIGITS.map((d) => (
-          <span key={d} className="block h-9 w-[0.62em] text-center">
+          <span key={d} className="block h-9">
             {d}
           </span>
         ))}
