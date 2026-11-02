@@ -142,7 +142,7 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
     >
       <header className={`flex items-start gap-3 px-6 transition-[padding] duration-300 ease-[var(--ease-reveal)] ${ruledOut ? "py-4" : "pb-2 pt-6"}`}>
         <span className="flex h-7 shrink-0 items-center">
-          <TileRank n={rank} root={root} />
+          <RankBadge n={rank} root={root} />
         </span>
         <h3
           className={`type-section min-w-0 flex-1 text-pretty transition-colors duration-200 ${
@@ -237,13 +237,17 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
   );
 }
 
-/* A tile's number in the ranking, or a check once it's the root cause
- * (as CauseRank does); the digit rolls when it changes. */
-function TileRank({ n, root }: { n: number; root: boolean }) {
+/* A cause's number in the ranking, or a check once it's the root cause;
+ * the digit rolls when it changes. DS Badge (categories/web-components/
+ * data-display): secondary for a number, default for the root cause.
+ * Both are held 24 wide (the check's padding is 6, not 8) so headlines
+ * line up from tile to tile. */
+function RankBadge({ n, root }: { n: number; root: boolean }) {
   return (
     <span
-      className={`relative flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full font-mono text-[12px] leading-4 transition-colors duration-200 ${
-        root ? "bg-verdigris-on-light text-white" : "bg-secondary text-foreground-secondary"
+      data-slot="badge"
+      className={`relative inline-flex h-5 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded-md py-0.5 text-xs font-medium tabular-nums transition-colors duration-200 ${
+        root ? "bg-primary px-1.5 text-primary-foreground" : "bg-secondary px-2 text-secondary-foreground"
       }`}
       aria-label={root ? "Root cause" : `Number ${n}`}
     >
@@ -375,7 +379,7 @@ function TileSkeleton() {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-background shadow-xs" aria-hidden>
       <div className="flex items-center gap-3 px-6 pb-2 pt-6">
-        <span className="shimmer size-5 shrink-0 rounded-full" />
+        <span className="shimmer h-5 w-6 shrink-0 rounded-md" />
         <span className="flex h-7 flex-1 items-center">
           <span className="shimmer h-4 w-[58%] rounded-[4px]" />
         </span>
@@ -398,31 +402,8 @@ function TileSkeleton() {
 }
 
 /* A cause's place in the ranking, used where causes are listed in
- * the follow-up answer. The confirmed root cause trades its number
- * for a check. */
+ * the follow-up answer. */
 export function CauseRank({ id }: { id: Cause["id"] }) {
   const { state } = usePrototype();
-  const root = isRoot(state, id);
-  return (
-    <span
-      className={`relative flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full font-mono text-[12px] leading-4 transition-colors duration-200 ${
-        root ? "bg-verdigris-on-light text-white" : "bg-secondary text-foreground-secondary"
-      }`}
-      aria-label={root ? "Root cause" : `Cause ${id}`}
-    >
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={root ? "check" : id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: DUR.moderate, ease: EASE.reveal }}
-          className="flex"
-          aria-hidden
-        >
-          {root ? <Icon src="/figma/handoff/check.svg" size={12} /> : id}
-        </motion.span>
-      </AnimatePresence>
-    </span>
-  );
+  return <RankBadge n={id} root={isRoot(state, id)} />;
 }
