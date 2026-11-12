@@ -152,6 +152,10 @@ export const SPRING = {
   whatIf: { type: "spring" as const, mass: 1, stiffness: 520, damping: 44 },
   // Knob follows the pointer while dragging
   drag: { type: "spring" as const, stiffness: 900, damping: 60 },
+  /* Cause lists sliding under the segmented control. A click has no
+   * throw, so the spring is critically damped and simply turns around
+   * if the other tab is chosen mid-flight. */
+  pane: { type: "spring" as const, bounce: 0, visualDuration: 0.4 },
 };
 
 /* AI output arriving: a short rise and fade. */
