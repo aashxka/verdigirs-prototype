@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import type { Cause } from "@/lib/data";
+import { CAUSES, type Cause } from "@/lib/data";
 import { DUR, EASE, SPRING } from "@/lib/motion";
 import { usePrototype, type Tab } from "@/lib/store";
 import { Icon, PanelIcon } from "../ui";
@@ -125,6 +125,7 @@ export function AssistantDrawer() {
           <nav className="flex h-12 w-full shrink-0 items-end gap-6 border-b border-border px-6" aria-label="Assistant sections">
             {TABS.map(({ label, tab }) => {
               const active = tab === state.tab;
+              const count = tab === "rca" ? (state.causeView === "root" && state.roots.length > 0 ? state.roots.length : CAUSES.length - state.roots.length) : null;
               return (
                 <button
                   key={label}
@@ -134,11 +135,14 @@ export function AssistantDrawer() {
                   className="group flex flex-col"
                 >
                   <span
-                    className={`py-3 text-[14px] font-medium leading-5 transition-colors duration-150 ${
+                    className={`flex items-baseline gap-1.5 py-3 text-[14px] font-medium leading-5 transition-colors duration-150 ${
                       active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground-secondary"
                     }`}
                   >
                     {label}
+                    {count !== null && (
+                      <span className={`tabular ${active ? "text-foreground-tertiary" : "text-subtle-foreground"}`}>({count})</span>
+                    )}
                   </span>
                   <span
                     className={`h-0.5 w-full origin-center rounded-t-[2px] bg-verdigris-on-light transition-[opacity,transform] duration-200 ease-[var(--ease-reveal)] ${

@@ -29,7 +29,7 @@ import { TIMING } from "./motion";
  * ───────────────────────────────────────────────────────── */
 
 export type StepStatus = "idle" | "working" | "done";
-export type Undo = { kind: "confirm"; prev: Cause["id"] | null } | { kind: "step"; key: string };
+export type Undo = { kind: "confirm"; id: Cause["id"] } | { kind: "step"; key: string };
 /* The drawer's extension: one cause's Simulation and/or Recommended
  * actions boxes, always in that order (actions sit below the sim). */
 export type SideView = "simulate" | "actions";
@@ -39,6 +39,7 @@ export type Toast = { id: number; text: string; description?: string; undo?: Und
 type ToastInput = Omit<Toast, "id">;
 export type ChatPhase = "idle" | "asking" | "searching" | "answering" | "done";
 export type Tab = "rca" | "related" | "log" | "handoff";
+export type CauseView = "root" | "likely";
 export type HandoffPhase = "pick" | "writing" | "ready" | "sending" | "sent";
 /* null = person not picked; [] = picked, no channel yet. */
 export type Picks = Record<PersonKey, ChannelKey[] | null>;
@@ -58,10 +59,12 @@ export type State = {
   traceDone: number;
   traceFolded: boolean;
   causesShown: number;
-  /* The confirmed root cause (only one at a time), and the cause
-   * whose Yes is still spinning. The root keeps its place until the
-   * new one lands. */
-  root: Cause["id"] | null;
+  /* Which list the Root cause tab is showing. Likely causes exists
+   * only after the first confirmation. */
+  causeView: CauseView;
+  /* Confirmed root causes, in the order they were confirmed. Several
+   * can stand at once. `confirming` is the cause whose Yes is spinning. */
+  roots: Cause["id"][];
   confirming: Cause["id"] | null;
   ruledOut: Cause["id"][];
   side: Side | null;
@@ -106,7 +109,8 @@ const initial: State = {
   traceDone: 0,
   traceFolded: false,
   causesShown: 0,
-  root: null,
+  causeView: "likely",
+  roots: [],
   confirming: null,
   ruledOut: [],
   side: null,
@@ -132,7 +136,7 @@ const initial: State = {
   handoffDraft: null,
 };
 
-export const isRoot = (s: State, id: Cause["id"]) => s.root === id;
+export const isRoot = (s: State, id: Cause["id"]) => s.roots.includes(id);
 
 /* Messages to write, in the order they appear: person, then channel. */
 export function pickedMessages(picks: Picks) {
@@ -239,27 +243,38 @@ function useController() {
       closeDrawer() {
         patch({ drawer: "closed", investigating: false });
       },
-      /* Yes on a tile. Confirming another cause moves the root cause
-       * to it; undo puts the previous root back. */
+      /* Yes on a tile adds it to the root causes. Several can stand at
+       * once. Undo takes just that one back down to the list. */
       confirm(id: Cause["id"]) {
         const s = ref.current;
-        if (s.confirming || s.root === id || s.ruledOut.includes(id)) return;
-        const prev = s.root;
+        if (s.confirming || s.roots.includes(id) || s.ruledOut.includes(id)) return;
         patch({ confirming: id });
         clear("confirm");
         after("confirm", TIMING.confirmSpinner, () => {
-          patch({ root: id, confirming: null });
-          if (prev) dispatch({ type: "unlog", keys: ["confirm"] });
+          const next = [...ref.current.roots, id];
+          patch({ roots: next, confirming: null, causeView: next.length === 1 ? "root" : ref.current.causeView });
           dispatch({ type: "log", key: "confirm", cause: id });
           after("confirm", 260, () =>
-            toast({ text: "Root cause confirmed", description: causeById(id).headline, undo: { kind: "confirm", prev } }),
+            toast({ text: "Root cause confirmed", description: causeById(id).headline, undo: { kind: "confirm", id } }),
           );
         });
       },
-      /* No on a tile: it folds down to its headline, with Undo beside it. */
+      /* Undo on a confirmed cause: it leaves Root cause and returns to
+       * Likely causes, in its rank. */
+      undoRoot(id: Cause["id"]) {
+        const s = ref.current;
+        if (!s.roots.includes(id)) return;
+        const roots = s.roots.filter((x) => x !== id);
+        const steps = { ...s.steps };
+        if (id === 1) CONFIRMED_ONLY.forEach((k) => delete steps[k]);
+        patch({ roots, steps, causeView: roots.length === 0 ? "likely" : s.causeView });
+        dispatch({ type: "unlog", keys: id === 1 ? ["confirm", ...CONFIRMED_ONLY] : ["confirm"], cause: id === 1 ? undefined : id });
+        const t = s.toast;
+        if (t?.undo?.kind === "confirm" && t.undo.id === id) dispatch({ type: "dismissToast", id: t.id });
+      },
       ruleOut(id: Cause["id"]) {
         const s = ref.current;
-        if (s.ruledOut.includes(id) || s.root === id || s.confirming === id) return;
+        if (s.ruledOut.includes(id) || s.roots.includes(id) || s.confirming === id) return;
         patch({ ruledOut: [...s.ruledOut, id], side: s.side?.cause === id ? null : s.side });
         dispatch({ type: "log", key: "rule-out", cause: id });
       },
@@ -356,18 +371,8 @@ function useController() {
       undo(t: Toast) {
         dispatch({ type: "dismissToast", id: t.id });
         if (!t.undo) return;
-        if (t.undo.kind === "confirm") {
-          // Only the fix steps that appear after rack 14 is confirmed are
-          // undone; escalation and the other causes' steps survive.
-          const { prev } = t.undo;
-          const steps = { ...ref.current.steps };
-          if (prev !== 1) CONFIRMED_ONLY.forEach((k) => delete steps[k]);
-          patch({ root: prev, steps });
-          dispatch({ type: "unlog", keys: ["confirm", ...(prev === 1 ? [] : CONFIRMED_ONLY)] });
-          if (prev) dispatch({ type: "log", key: "confirm", cause: prev });
-        } else {
-          actions.undoStep(t.undo.key);
-        }
+        if (t.undo.kind === "confirm") actions.undoRoot(t.undo.id);
+        else actions.undoStep(t.undo.key);
       },
       /* Undo beside a finished action (and the toast's Undo): the
        * action goes back to its button and leaves the Log. */
@@ -390,6 +395,10 @@ function useController() {
       setTab(tab: Tab) {
         const s = ref.current;
         if (s.tab !== tab) patch({ tab, related: { ...s.related, menu: null }, logSeen: s.logSeen || tab === "log" });
+      },
+      setCauseView(causeView: CauseView) {
+        if (causeView === "likely" && ref.current.roots.length === 0) return;
+        patch({ causeView });
       },
       /* Related issues: Date and Sort apply on pick; Filter edits a
        * draft that only lands on Apply. */

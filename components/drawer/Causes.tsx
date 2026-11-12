@@ -1,9 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useId, useLayoutEffect, useRef } from "react";
 import { ASK_CAUSE, CAUSES, CAUSE_ODDS, POWER_ON, causeById, type Cause, type CauseChart } from "@/lib/data";
-import { DUR, EASE, TWEEN } from "@/lib/motion";
+import { DUR, EASE, SPRING, TWEEN } from "@/lib/motion";
 import { isRoot, usePrototype } from "@/lib/store";
 import { Badge, Button, Collapse, ConfidenceLabel, Icon } from "../ui";
 import { AskLine } from "./AskLine";
@@ -11,62 +11,110 @@ import { OddsFigures } from "./WhatIf";
 
 const C = "/figma/cause";
 
-/* Likely causes as three tiles (11.0). Each resolves out of a
- * skeleton in rank order, then answers one question: is this the
- * cause? Each leads with its UPS-2 odds card, then its evidence chart.
- * A click on the tile itself opens Thinking in the side panel;
- * Simulate and Recommend actions open the drawer's side panel
- * for that tile, and the tile wears a ring while the panel is its.
- *
- * Tiles are numbered in rank order. Yes on a tile makes it the likely
- * root cause: it rises to the top, its number becomes a check, and the
- * others drop below an "Other likely causes" heading, still in rank
- * order and renumbered from 1. Undo, or confirming another cause,
- * reorders them the same way. */
-export function CauseTiles() {
+/* Before anything is confirmed, the sheet is just the likely causes.
+ * The first Yes opens a Root causes tab (count in brackets) and parks
+ * the rest under Likely causes, in the same segmented control. */
+export function CauseSections() {
   const { state } = usePrototype();
-  const rootId = state.root;
-  const others = CAUSES.filter((c) => c.id !== rootId);
-  const order = rootId ? [causeById(rootId), ...others] : CAUSES;
-  const listRef = useRef<HTMLDivElement>(null);
-  useTileFlip(listRef, order.map((c) => c.id).join(","), rootId);
+  const roots = state.roots.map(causeById);
+  const likely = CAUSES.filter((c) => !state.roots.includes(c.id));
+  const rootOrder = roots.map((c) => c.id).join(",");
+  const likelyOrder = likely.map((c) => c.id).join(",");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const likelyRef = useRef<HTMLDivElement>(null);
+  useTileFlip(rootRef, rootOrder, state.roots.at(-1) ?? null, true);
+  useTileFlip(likelyRef, likelyOrder, null, false);
+  const showRoot = state.causeView === "root" && roots.length > 0;
+  const reduce = useReducedMotion();
+  const slide = reduce ? { duration: 0 } : SPRING.pane;
 
   return (
-    <div ref={listRef} className="flex w-full flex-col">
-      {order.flatMap((cause, pos) => [
-        ...(rootId && pos === 1
-          ? [
-              <motion.h3
-                key="others"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: DUR.reveal, ease: EASE.reveal, delay: 0.16 }}
-                className="type-section pb-3 pt-6 text-foreground"
-              >
-                Other likely causes
-              </motion.h3>,
-            ]
-          : []),
-        <div key={cause.id} data-flip={cause.id} className={`${pos < order.length - 1 ? "pb-4" : ""} ${cause.id === rootId ? "relative z-[1]" : ""}`}>
-          <CauseSlot cause={cause} i={CAUSES.indexOf(cause)} rank={rootId ? pos : pos + 1} />
-        </div>,
-      ])}
+    <div className="flex w-full flex-col">
+      {roots.length > 0 && <CauseViewToggle />}
+      <div className="overflow-hidden">
+        <motion.div
+          className="flex w-[200%] items-start"
+          initial={false}
+          animate={{ x: showRoot ? "0%" : "-50%" }}
+          transition={slide}
+        >
+          <div ref={rootRef} className="flex w-1/2 flex-col" inert={!showRoot} aria-hidden={!showRoot}>
+            {roots.map((cause, pos) => (
+              <div key={cause.id} data-flip={cause.id} className={pos < roots.length - 1 ? "pb-4" : ""}>
+                <CauseSlot cause={cause} i={CAUSES.indexOf(cause)} rank={pos + 1} />
+              </div>
+            ))}
+          </div>
+          <div ref={likelyRef} className="flex w-1/2 flex-col" inert={showRoot} aria-hidden={showRoot}>
+            {likely.map((cause, pos) => (
+              <div key={cause.id} data-flip={cause.id} className={pos < likely.length - 1 ? "pb-4" : ""}>
+                <CauseSlot cause={cause} i={CAUSES.indexOf(cause)} rank={pos + 1} />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+      <span className="sr-only" aria-live="polite">
+        {roots.length === 0 ? "No root causes confirmed." : `${roots.length} root ${roots.length === 1 ? "cause" : "causes"} confirmed.`}
+      </span>
     </div>
   );
 }
 
-/* FLIP for the reorder. Positions are taken after every commit, so on
- * the commit that reorders, each tile slides from where it last sat.
+/* Same segmented control as Phase A / B / C. Hidden until the first
+ * confirmation, then Root causes leads and Likely causes follows.
+ * Each name carries its count in brackets. */
+function CauseViewToggle() {
+  const { state, actions } = usePrototype();
+  const reduce = useReducedMotion();
+  const views = [
+    { id: "root" as const, label: "Root causes", count: state.roots.length },
+    { id: "likely" as const, label: "Likely causes", count: CAUSES.length - state.roots.length },
+  ];
+  const activeIndex = state.causeView === "likely" ? 1 : 0;
+  return (
+    <div className="relative mb-5 flex w-full items-center rounded-lg bg-secondary p-1" role="tablist" aria-label="Cause lists">
+      <motion.span
+        aria-hidden
+        className="absolute bottom-1 top-1 rounded-button bg-background shadow-[0_1px_1.5px_rgba(0,0,0,0.1),0_1px_1px_rgba(0,0,0,0.1)]"
+        initial={false}
+        animate={{ left: `calc(${activeIndex * 50}% + 4px)`, width: "calc(50% - 8px)" }}
+        transition={reduce ? { duration: 0 } : SPRING.pane}
+      />
+      {views.map(({ id, label, count }) => {
+        const active = state.causeView === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => actions.setCauseView(id)}
+            className={`relative z-[1] flex h-[33px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-button text-[14px] font-medium leading-[21px] tracking-[-0.15px] transition-colors duration-150 ${
+              active ? "text-foreground" : "text-foreground-secondary hover:text-foreground"
+            }`}
+          >
+            <span className="truncate">{label}</span>
+            <span className={`tabular ${active ? "text-foreground-tertiary" : "text-subtle-foreground"}`}>({count})</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* FLIP for a reorder. Positions are taken after every commit, so on
+ * the commit that moves a tile, it slides from where it last sat.
  * offsetTop is layout px, so this stays right inside the scaled stage.
- * A new root cause that starts above the fold is scrolled to. */
-function useTileFlip(list: React.RefObject<HTMLDivElement | null>, order: string, rootId: Cause["id"] | null) {
-  const last = useRef<{ order: string; root: Cause["id"] | null; tops: Map<string, number> } | null>(null);
+ * A cause that just became a root cause is scrolled into view. */
+function useTileFlip(list: React.RefObject<HTMLDivElement | null>, order: string, focusId: Cause["id"] | null, scrollToNew: boolean) {
+  const last = useRef<{ order: string; tops: Map<string, number> } | null>(null);
   useLayoutEffect(() => {
     const el = list.current;
     if (!el) return;
     const tiles = [...el.querySelectorAll<HTMLElement>("[data-flip]")];
     const prev = last.current;
-    last.current = { order, root: rootId, tops: new Map(tiles.map((n) => [n.dataset.flip!, n.offsetTop])) };
+    last.current = { order, tops: new Map(tiles.map((n) => [n.dataset.flip!, n.offsetTop])) };
     if (!prev || prev.order === order || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const easing = `cubic-bezier(${EASE.reveal.join(",")})`;
@@ -74,10 +122,13 @@ function useTileFlip(list: React.RefObject<HTMLDivElement | null>, order: string
       const dy = (prev.tops.get(n.dataset.flip!) ?? n.offsetTop) - n.offsetTop;
       if (dy) n.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: DUR.slow * 1000, easing });
     }
-    if (rootId && rootId !== prev.root) {
+    if (scrollToNew && focusId && !prev.order.split(",").includes(String(focusId))) {
       const sc = el.closest<HTMLElement>(".scroll-quiet");
-      const top = el.offsetTop - 64;
-      if (sc && sc.scrollTop > top) sc.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      const tile = el.querySelector<HTMLElement>(`[data-flip="${focusId}"]`);
+      if (sc && tile) {
+        const top = tile.offsetTop + el.offsetTop - 16;
+        if (sc.scrollTop > top) sc.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      }
     }
   });
 }
@@ -87,12 +138,7 @@ function CauseSlot({ cause, i, rank }: { cause: Cause; i: number; rank: number }
   return (
     <AnimatePresence mode="popLayout" initial={false}>
       {state.causesShown > i ? (
-        <motion.div
-          key="tile"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: DUR.reveal, ease: EASE.reveal }}
-        >
+        <motion.div key="tile" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DUR.reveal, ease: EASE.reveal }}>
           <CauseTile cause={cause} rank={rank} />
         </motion.div>
       ) : (
@@ -130,9 +176,7 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
       onClick={onTileClick}
       className={`cursor-pointer overflow-clip rounded-lg border transition-[border-color,box-shadow,background-color] duration-200 ease-[var(--ease-reveal)] ${
         active
-          ? // A soft, still verdigris glow outside a light accent edge,
-            // not a solid bar.
-            "border-accent-border bg-background shadow-accent-glow"
+          ? "border-accent-border bg-background shadow-accent-glow"
           : ruledOut
             ? "border-border bg-surface-subtle hover:border-[#d4d4d8]"
             : "border-border bg-background shadow-xs hover:border-[#d4d4d8]"
@@ -142,11 +186,7 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
         <span className="flex h-7 shrink-0 items-center">
           <RankBadge n={rank} root={root} />
         </span>
-        <h3
-          className={`type-section min-w-0 flex-1 text-pretty transition-colors duration-200 ${
-            ruledOut ? "text-muted-foreground" : "text-foreground"
-          }`}
-        >
+        <h3 className={`type-section min-w-0 flex-1 text-pretty transition-colors duration-200 ${ruledOut ? "text-muted-foreground" : "text-foreground"}`}>
           {cause.headline}
         </h3>
         <span className="relative flex h-7 shrink-0 items-center">
@@ -154,11 +194,7 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
             {ruledOut ? (
               <motion.span key="ruled" {...swap} className="flex items-center gap-3 text-[14px] leading-5">
                 <span className="text-muted-foreground">Ruled out</span>
-                <button
-                  type="button"
-                  onClick={() => actions.restoreCause(cause.id)}
-                  className="font-medium text-verdigris-on-light underline-offset-4 hover:underline"
-                >
+                <button type="button" onClick={() => actions.restoreCause(cause.id)} className="font-medium text-verdigris-on-light underline-offset-4 hover:underline">
                   Undo
                 </button>
               </motion.span>
@@ -184,41 +220,24 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
       </header>
 
       <Collapse open={!ruledOut} inMs={300} outMs={240}>
-        {/* Spacing on the product-ui scale, tight inside a group and
-            generous between them: headline → summary 8 (compact), 24
-            (panel) to the evidence card and from it down to the verdict's
-            divider, 16 below that. Padding is 24 to match the card's, so
-            the nested card never out-pads its tile. */}
         <div className="flex flex-col px-6 pb-6">
-          {/* The scripted follow-up is asked by pointing at this line. */}
-          <p className="type-body text-pretty text-foreground-tertiary">
-            {cause.id === ASK_CAUSE ? <AskLine text={cause.summary} /> : cause.summary}
-          </p>
+          <p className="type-body text-pretty text-foreground-tertiary">{cause.id === ASK_CAUSE ? <AskLine text={cause.summary} /> : cause.summary}</p>
 
-          {/* DS Card (design.verdigris.co/categories/web-components/cards):
-              the odds are the title, the risk and its fix one description
-              line, the cause's chart the content, and the side-panel
-              buttons the footer. The chart is the evidence for both the
-              odds above it and the Simulate below it, so it lives between
-              them; sections sit 32 apart (section token) so each reads on
-              its own inside the card. */}
-          <section
-            data-slot="card"
-            aria-label="UPS-2 failure risk"
-            className="mt-6 flex flex-col gap-8 rounded-xl border border-border bg-card py-6 text-foreground"
-          >
-            <div data-slot="card-header" className="grid gap-2 px-6">
-              <div data-slot="card-title" className="font-semibold leading-none">
+          {/* The odds, the risk line, the chart, then the actions. A
+              hairline above and below — no box, no radius — so the
+              evidence reads as part of the tile rather than a card
+              nested inside it. */}
+          <section aria-label="UPS-2 failure risk" className="mt-6 flex flex-col gap-6 border-y border-border py-6 text-foreground">
+            <div className="grid gap-2">
+              <div className="font-semibold leading-none">
                 <OddsFigures id={cause.id} size="lg" />
               </div>
-              <p data-slot="card-description" className="truncate text-sm text-muted-foreground" title={CAUSE_ODDS[cause.id].line}>
+              <p className="truncate text-sm text-muted-foreground" title={CAUSE_ODDS[cause.id].line}>
                 {CAUSE_ODDS[cause.id].line}
               </p>
             </div>
-            <div data-slot="card-content" className="px-6">
-              <TileChart chart={cause.chart} />
-            </div>
-            <div data-slot="card-footer" className="flex items-center gap-2 px-6">
+            <TileChart chart={cause.chart} />
+            <div className="flex items-center gap-2">
               <Button pressed={boxes.includes("simulate")} onClick={() => actions.openSide(cause.id, "simulate")}>
                 Simulate
               </Button>
@@ -235,12 +254,9 @@ function CauseTile({ cause, rank }: { cause: Cause; rank: number }) {
   );
 }
 
-/* A cause's number in the ranking, or a check once it's the root cause;
- * the digit rolls when it changes. DS Badge (categories/web-components/
- * data-display): secondary for a number, default for the root cause,
- * with the digit at 13px rather than text-xs so it stays above 12 when
- * the stage scales down. Both are held 24 wide (the check's padding is 6,
- * not 8) so headlines line up from tile to tile. */
+/* A cause's number in its list, or a check once it's a root cause.
+ * The digit rolls when it changes. Both states are held 24 wide so
+ * headlines line up from tile to tile. */
 function RankBadge({ n, root }: { n: number; root: boolean }) {
   return (
     <span
@@ -283,9 +299,14 @@ function Verdict({ id }: { id: Cause["id"] }) {
     <div className="relative mt-6 flex border-t border-border pt-4">
       <AnimatePresence mode="popLayout" initial={false}>
         {root ? (
-          <motion.span key="done" {...swap} className="flex h-8 flex-1 items-center gap-2 text-[14px] font-medium leading-5 text-foreground">
-            <Icon src={`${C}/circle-check.svg`} size={16} />
-            You confirmed this as the root cause.
+          <motion.span key="done" {...swap} className="flex h-8 flex-1 items-center gap-3 text-[14px] leading-5">
+            <span className="flex min-w-0 flex-1 items-center gap-2 font-medium text-foreground">
+              <Icon src={`${C}/circle-check.svg`} size={16} />
+              <span className="truncate">You confirmed this as a root cause.</span>
+            </span>
+            <button type="button" onClick={() => actions.undoRoot(id)} className="shrink-0 font-medium text-verdigris-on-light underline-offset-4 hover:underline">
+              Undo
+            </button>
           </motion.span>
         ) : (
           <motion.span key="ask" {...swap} className="flex h-8 flex-1 items-center gap-2">
@@ -303,12 +324,9 @@ function Verdict({ id }: { id: Cause["id"] }) {
   );
 }
 
-/* The tile's signal: one line over 11:30–13:30, its limit dashed
- * in red, and the 12:22 power-on marked. The line draws left to
- * right once, as the tile arrives, so the jump reads as an event. */
-const CW = 452; // card content width (tile 502 − card border and padding)
-const PH = 88; // plot height
-const TOP = 22; // row above the plot for the power-on label
+const CW = 500;
+const PH = 88;
+const TOP = 22;
 
 function TileChart({ chart }: { chart: CauseChart }) {
   const gid = useId();
@@ -319,11 +337,9 @@ function TileChart({ chart }: { chart: CauseChart }) {
   const area = `${line} L${CW} ${PH} L0 ${PH} Z`;
   const yLim = y(chart.limit.value);
   const yEnd = y(chart.points[chart.points.length - 1][1]);
-  // The limit label sits above its line unless the signal runs just above it there.
   const labelBelow = yEnd < yLim && yLim - yEnd < 28;
   const mx = x(POWER_ON.at);
 
-  // No visible caption: the signal's name stays in the figure's label.
   return (
     <figure className="relative h-[134px] w-full" aria-label={`${chart.label}, 11:30 to 13:30, ${chart.limit.label.toLowerCase()} dashed`}>
       <svg className="absolute left-0 overflow-visible" style={{ top: TOP }} width={CW} height={PH} viewBox={`0 0 ${CW} ${PH}`} aria-hidden>
@@ -334,13 +350,7 @@ function TileChart({ chart }: { chart: CauseChart }) {
           </linearGradient>
         </defs>
         <line x1="0" x2={CW} y1={PH - 0.5} y2={PH - 0.5} stroke="var(--color-border)" />
-        <motion.path
-          d={area}
-          fill={`url(#${gid})`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: DUR.draw, ease: EASE.reveal, delay: 0.45 }}
-        />
+        <motion.path d={area} fill={`url(#${gid})`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.draw, ease: EASE.reveal, delay: 0.45 }} />
         <line x1="0" x2={CW} y1={yLim} y2={yLim} stroke="var(--color-pastel-red)" strokeWidth="1" strokeDasharray="3 3" />
         <motion.path
           d={line}
@@ -354,7 +364,6 @@ function TileChart({ chart }: { chart: CauseChart }) {
           transition={{ duration: DUR.draw, ease: EASE.reveal, delay: 0.2 }}
         />
       </svg>
-
       <span className="absolute w-px bg-neutral-500/70" style={{ left: mx, top: 4, height: TOP - 4 + PH }} aria-hidden />
       <span className="absolute top-0 whitespace-nowrap text-[13px] font-medium leading-4 text-foreground-secondary" style={{ left: mx + 6 }}>
         {POWER_ON.label}
@@ -362,7 +371,6 @@ function TileChart({ chart }: { chart: CauseChart }) {
       <span className="absolute right-0 text-[13px] font-medium leading-4 text-destructive" style={{ top: labelBelow ? TOP + yLim + 4 : TOP + yLim - 19 }}>
         {chart.limit.label}
       </span>
-
       <span className="absolute left-0 font-mono text-[13px] leading-4 text-subtle-foreground tabular-nums" style={{ top: TOP + PH + 8 }}>
         11:30
       </span>
@@ -373,7 +381,6 @@ function TileChart({ chart }: { chart: CauseChart }) {
   );
 }
 
-/* Same anatomy and spacing as a tile, so nothing jumps when it resolves. */
 function TileSkeleton() {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-background shadow-xs" aria-hidden>
@@ -389,7 +396,7 @@ function TileSkeleton() {
           <span className="shimmer h-2.5 w-[86%] rounded-[4px]" />
           <span className="shimmer h-2.5 w-[52%] rounded-[4px]" />
         </span>
-        <span className="shimmer mt-6 h-[328px] rounded-xl" />
+        <span className="shimmer mt-6 h-[280px]" />
         <span className="mt-6 flex border-t border-border pt-4">
           <span className="flex h-8 flex-1 items-center">
             <span className="shimmer h-3 w-28 rounded-[4px]" />
@@ -400,8 +407,6 @@ function TileSkeleton() {
   );
 }
 
-/* A cause's place in the ranking, used where causes are listed in
- * the follow-up answer. */
 export function CauseRank({ id }: { id: Cause["id"] }) {
   const { state } = usePrototype();
   return <RankBadge n={id} root={isRoot(state, id)} />;
